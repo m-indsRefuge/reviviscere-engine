@@ -1,6 +1,6 @@
 import { logInteraction } from './logging.js';
 import { emitMetric } from './metrics.js';
-import { fetchWithRetry } from './fetch.js'; // Now using your resilient fetch utility
+import { fetchWithRetry } from './fetch.js';
 
 export class WatchtowerDO {
   constructor(state, env) {
@@ -32,19 +32,17 @@ export class WatchtowerDO {
 
     const MODEL_NAME = 'gemma:2b';
     const prompt = promptTemplate.replace('{inputText}', inputText);
+    let response; // Declare response here to access it in the catch block
 
     try {
-      const response = await fetchWithRetry(
+      response = await fetchWithRetry(
         `${OLLAMA_ENDPOINT}/api/generate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: MODEL_NAME, prompt: prompt, stream: false }),
         },
-        1,
-        timeoutMs,
-        this.env,
-        traceId
+        1, timeoutMs, this.env, traceId
       );
 
       if (!response.ok) {
@@ -56,13 +54,20 @@ export class WatchtowerDO {
       const data = await response.json();
       return JSON.parse(data.response);
     } catch (error) {
-      await this.#log('VALIDATION_FETCH_FAIL', error.stack || error.message, traceId);
+      // +++ NEW: Detailed logging for debugging +++
+      let responseBody = '[Could not read response body]';
+      if (response) {
+          try {
+              responseBody = await response.text();
+          } catch {}
+      }
+      await this.#log('VALIDATION_FETCH_FAIL', `Error: ${error.message}. Response Body: ${responseBody.substring(0, 500)}`, traceId);
       return { verdict: 'fail', reason: `Failed to get verdict from validation model: ${error.message}` };
     }
   }
 
+  // ... rest of the file is unchanged ...
   async #log(tag, msg, traceId) {
-    // --- CORRECTED: Standardized the name to match wrangler.toml ---
     const loggerStub = this.env.LOGGER_DO.get(this.env.LOGGER_DO.idFromName('main'));
     try {
       await loggerStub.fetch('https://logger/log', {
@@ -83,28 +88,22 @@ export class WatchtowerDO {
   async fetch(request) {
     const traceId = request.headers.get('X-Trace-Id') || crypto.randomUUID();
     const startTime = Date.now();
-
     try {
       const body = await request.clone().json();
       const { prompt: textToValidate } = body;
-
       if (typeof textToValidate !== 'string' || textToValidate.trim().length === 0) {
         await this.#log('PROMPT_VALIDATION', 'Prompt missing', traceId);
         return new Response(JSON.stringify({ status: 'error', error: 'Prompt is required' }), { status: 400 });
       }
-
       await this.#log('VALIDATION_START', `Starting validation for prompt.`, traceId);
       const result = await this.#getValidationVerdict(textToValidate, traceId);
       const duration = Date.now() - startTime;
-
       if (result.verdict === 'fail') {
           await this.#log('VALIDATION_FAIL', `Validation failed: ${result.reason}`, traceId);
       } else {
           await this.#log('VALIDATION_SUCCESS', `Validation passed.`, traceId);
       }
-      
       await emitMetric('request_ok', { env: this.env, traceId });
-
       return new Response(JSON.stringify({
         status: 'success',
         ...result,
@@ -113,7 +112,6 @@ export class WatchtowerDO {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
-
     } catch (err) {
       const msg = err?.message || 'Unknown error';
       await this.#log('UNHANDLED_EXCEPTION', msg, traceId);
