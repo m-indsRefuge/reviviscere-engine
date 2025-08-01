@@ -50,19 +50,21 @@ export function moderatePrompt(prompt) {
     }
   }
 
-  // 2. Check for blacklisted phrases
+  // 2. Check for blacklisted phrases (now with more robust fuzzy matching)
   for (const phrase of blacklist) {
+    // Fast path: check for exact match first
     if (normalizedPrompt.includes(phrase)) {
       issues.push(`Blacklisted phrase detected: "${phrase}"`);
-      continue; // Found exact match, no need for fuzzy check
+      continue;
     }
 
-    // +++ NEW: More robust fuzzy check for multi-word phrases +++
+    // Slow path: fuzzy check for phrases with typos
     const phraseWords = phrase.split(' ');
     let allWordsFoundFuzzily = true;
     for (const phraseWord of phraseWords) {
       let foundMatchForWord = false;
       for (const promptWord of promptWords) {
+        // Allow for a single typo in each word of the phrase
         if (levenshteinDistance(promptWord, phraseWord) <= 1) {
           foundMatchForWord = true;
           break;
