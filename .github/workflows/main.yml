@@ -37,9 +37,11 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      # --- MODIFIED: Use the correct --config flag for the wrangler deploy command ---
+      # --- MODIFIED: Pass the API token secret as an environment variable ---
       - name: Deploy to Cloudflare Preview and capture URL
         id: deploy_preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           output=$(wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview)
           echo "worker_url=$(echo "$output" | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
@@ -50,6 +52,7 @@ jobs:
       - name: Run Vitest E2E tests against Preview
         env:
           BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
+          API_KEY: ${{ vars.API_KEY || secrets.API_KEY }} # Use Repository Variable or Secret for API Key
         run: npx vitest run --root ./agents/watchtower
 
       - name: Teardown Docker Compose environment
@@ -67,8 +70,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy Watchtower Agent
-        if: contains(github.event.head_commit.modified, 'agents/watchtower/')
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --config ./agents/watchtower/wrangler.toml
+        # This condition needs to be more robust for pull requests vs. pushes
+        # For now, we simplify it to always check the repo state
+        run: |
+          if git diff --quiet HEAD^ HEAD -- ./agents/watchtower/; then
+            echo "No changes in agents/watchtower, skipping deployment."
+          else
+            echo "Changes detected in agents/watchtower, proceeding with deployment."
+            # The official action is the best way to handle deployment
+            npm install -g wrangler
+            wrangler deploy --config ./agents/watchtower/wrangler.toml
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
