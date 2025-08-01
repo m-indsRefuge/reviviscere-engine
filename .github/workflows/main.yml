@@ -9,7 +9,6 @@ on:
     branches: [ main ]
 
 jobs:
-  # The E2E test job is the primary gatekeeper
   e2e-test:
     name: Run End-to-End Tests
     runs-on: ubuntu-latest
@@ -22,14 +21,14 @@ jobs:
         run: docker compose up -d
 
       - name: Wait for services to be ready
-        run: sleep 20 # Increased sleep time for more stability
+        run: sleep 20
 
       - name: Extract ngrok Tunnel URL
-        id: get_url
+        id: get_ngrok_url
         run: echo "NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')" >> $GITHUB_OUTPUT
 
       - name: Display ngrok URL
-        run: echo "Tunnel is live at ${{ steps.get_url.outputs.NGROK_URL }}"
+        run: echo "Tunnel is live at ${{ steps.get_ngrok_url.outputs.NGROK_URL }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -39,22 +38,29 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      - name: Deploy to Cloudflare Preview
+      - name: Deploy to Cloudflare Preview and capture URL
         id: deploy_preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
-          # Deploy and capture the full output
-          output=$(wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --outdir=dist-preview)
+          # Deploy and redirect stderr to stdout to capture all output
+          output=$(wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHtower_MODEL_URL:${{ steps.get_ngrok_url.outputs.NGROK_URL }} --outdir=dist-preview 2>&1)
+          echo "Full deploy output:"
+          echo "$output"
           # Extract the URL and save it to a GitHub Actions output variable
-          echo "worker_url=$(echo "$output" | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
+          worker_url=$(echo "$output" | grep -o 'https://[^ ]*workers.dev')
+          if [ -z "$worker_url" ]; then
+            echo "::error::Failed to capture preview worker URL."
+            exit 1
+          fi
+          echo "worker_url=$worker_url" >> $GITHUB_OUTPUT
 
       - name: Install Watchtower test dependencies
         run: npm --prefix ./agents/watchtower install
 
       - name: Run Vitest E2E tests against Preview
         env:
-          # This correctly passes the preview URL and API key to the test script
+          # This correctly passes the preview URL and API key to the test script's environment
           BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
           API_KEY: ${{ secrets.API_KEY }}
         run: npx vitest run --root ./agents/watchtower
@@ -63,7 +69,6 @@ jobs:
         if: always()
         run: docker compose down
   
-  # The deploy job runs only after E2E tests pass on a push to main
   deploy-production:
     name: Deploy Watchtower to Production
     runs-on: ubuntu-latest
