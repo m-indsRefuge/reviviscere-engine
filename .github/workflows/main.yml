@@ -12,24 +12,39 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         project: [ 'agents/watchtower' ]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies for ${{ matrix.project }}
+        run: npm --prefix ./${{ matrix.project }} install
+      - name: Run tests for ${{ matrix.project }}
+        run: npx vitest run --root ./${{ matrix.project }}
+
+  # +++ NEW: Stage 2 - Continuous Deployment Job +++
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    # This job needs the 'test' job to succeed first
+    needs: test
+    # This job should only run on a push to the main branch, not on pull requests
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Deploy Watchtower Agent
+        # This step will only run if the 'agents/watchtower' directory has changed
+        if: contains(github.event.head_commit.modified, 'agents/watchtower/') || contains(github.event.head_commit.added, 'agents/watchtower/')
+        uses: cloudflare/wrangler-action@v3
         with:
-          node-version: '20'
-
-      - name: Install dependencies for ${{ matrix.project }}
-        run: npm --prefix ./${{ matrix.project }} install
-
-      # --- MODIFIED: Use npx to run the test command ---
-      # This is the standard and more reliable way to execute package binaries in CI.
-      - name: Run tests for ${{ matrix.project }}
-        run: npx vitest run --root ./${{ matrix.project }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Tell Wrangler where the config file is for this specific agent
+          command: deploy --config ./agents/watchtower/wrangler.toml
