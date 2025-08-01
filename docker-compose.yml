@@ -5,14 +5,16 @@ services:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
+    # Set the entrypoint to the shell
+    entrypoint: /bin/sh
+    # Provide the script to the shell
     command:
-      - /bin/sh
       - -c
       - |
         ollama serve &
-        PID=$!
-        ollama pull ${OLLAMA_MODEL_NAME:-gemma:2b}
-        wait $PID
+        PID=$$!
+        ollama pull $${OLLAMA_MODEL_NAME:-gemma:2b}
+        wait $$PID
     environment:
       - OLLAMA_MODEL_NAME
     healthcheck:
