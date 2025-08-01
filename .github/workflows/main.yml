@@ -18,15 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-     - name: Start Docker Compose environment
+      - name: Start Docker Compose environment
         run: docker compose up -d --wait
 
       - name: Show Docker Compose logs on failure
         if: failure()
         run: docker compose logs
-        
-      - name: Wait for services to be ready
-        run: sleep 20 # Increased sleep time for more stability
 
       - name: Extract ngrok Tunnel URL
         id: get_url
@@ -62,7 +59,7 @@ jobs:
         if: always()
         run: docker compose down
   
-  # The deploy job runs only after E2E tests pass on a push to main
+  # The deploy job runs only after E2e tests pass on a push to main
   deploy-production:
     name: Deploy Watchtower to Production
     runs-on: ubuntu-latest
