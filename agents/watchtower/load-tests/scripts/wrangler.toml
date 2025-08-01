@@ -1,0 +1,11 @@
+name = "metrics-test-worker"
+main = "metrics-test-worker.js"
+compatibility_date = "2025-07-08"
+
+[[kv_namespaces]]
+binding = "WATCHTOWER_LOGS"
+id = "099d8bec9f5d4457a4ecb5444cdc41ca"
+
+[[kv_namespaces]]
+binding = "WATCHTOWER_METRICS"
+id = "4390293a699345298ad5fed03ef30602"

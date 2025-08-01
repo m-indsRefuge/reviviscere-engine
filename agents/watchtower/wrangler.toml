@@ -1,0 +1,52 @@
+name = "watchtower-agent-worker"
+main = "src/index.js"
+compatibility_date = "2025-06-30"
+
+[vars]
+API_KEY = "4f7e2d3a9b5f4c78a1d6e9f023b5c412"
+WATCHTOWER_MODEL_NAME = "gemma:2b"
+WATCHTOWER_MODEL_URL = "https://386586e41d0e.ngrok-free.app"
+MIW_INGEST_URL = "https://metrics-ingestion-worker.nolanaug.workers.dev"
+
+# +++ NEW: D1 Database Binding +++
+[[d1_databases]]
+binding = "DB"
+database_name = "reviviscere-logs"
+database_id = "69398ef1-e9cf-4b49-8ac1-a8f942653363"
+
+[[kv_namespaces]]
+binding = "WATCHTOWER_LOGS"
+id = "099d8bec9f5d4457a4ecb5444cdc41ca"
+
+[[kv_namespaces]]
+binding = "WATCHTOWER_METRICS"
+id = "4390293a699345298ad5fed03ef30602"
+
+[[kv_namespaces]]
+binding = "CONFIG_KV"
+id = "b635c36aa6e4474dad43b6b965f88343"
+
+[durable_objects]
+bindings = [
+  { name = "WATCHTOWER_DO", class_name = "WatchtowerDO" },
+  { name = "CONFIG_DO", class_name = "ConfigDO" },
+  { name = "LOGGER_DO", class_name = "LoggerDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["WatchtowerDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["ConfigDO"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["LoggerDO"]
+
+[observability.logs]
+enabled = true
+
+[triggers]
+crons = ["*/15 * * * *"]

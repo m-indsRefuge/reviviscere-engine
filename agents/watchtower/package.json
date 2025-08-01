@@ -1,0 +1,19 @@
+{
+  "name": "watchtower-agent",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "wrangler dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "itty-router": "^4.2.2"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.0",
+    "node-fetch": "^3.3.2",
+    "vitest": "^1.5.0",
+    "wrangler": "^4.27.0"
+  }
+}

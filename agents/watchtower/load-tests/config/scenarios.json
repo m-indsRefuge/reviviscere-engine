@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "name": "Moderate Ask Load",
+      "durationSeconds": 120,
+      "concurrency": 3,
+      "requestIntervalMs": 1000,
+      "requestType": "POST",
+      "endpoint": "/ask",
+      "payload": {
+        "prompt": "Explain the concept of free will in philosophy."
+      }
+    },
+    {
+      "name": "Heavy Ask Load",
+      "durationSeconds": 60,
+      "concurrency": 10,
+      "requestIntervalMs": 500,
+      "requestType": "POST",
+      "endpoint": "/ask",
+      "payload": {
+        "prompt": "Summarize the history of AI development."
+      }
+    },
+    {
+      "name": "Job Status Polling",
+      "durationSeconds": 120,
+      "concurrency": 5,
+      "requestIntervalMs": 1500,
+      "requestType": "GET",
+      "endpoint": "/ask",
+      "queryParams": {
+        "id": "REPLACE_WITH_VALID_JOB_ID"
+      }
+    }
+  ]
+}

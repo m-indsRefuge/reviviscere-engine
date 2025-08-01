@@ -1,0 +1,16 @@
+name = "forge-agent-worker"
+main = "src/index.js"
+compatibility_date = "2025-06-29"
+
+[vars]
+FORGE_MODEL_NAME = "codellama:7b-instruct-q4_K_M"
+FORGE_MODEL_URL = "https://875e-105-186-39-18.ngrok-free.app"  # Placeholder; will be updated dynamically by script
+
+[[durable_objects.bindings]]
+name = "FORGE_DO"
+class_name = "ForgeDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ForgeDO"]
+

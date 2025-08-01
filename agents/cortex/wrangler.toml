@@ -1,0 +1,24 @@
+name = "cortex-agent-worker"
+main = "src/index.js"
+compatibility_date = "2025-06-30"
+
+[vars]
+CORTEX_MODEL_NAME = "phi"
+CORTEX_MODEL_URL = "https://471d61171696.ngrok-free.app"
+
+[durable_objects]
+bindings = [
+  { name = "CORTEX_DO_V3", class_name = "CortexDO" },
+  { name = "CONFIG_DO", class_name = "ConfigDO" }
+]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["CortexDO"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["ConfigDO"]
+
+[observability.logs]
+enabled = true

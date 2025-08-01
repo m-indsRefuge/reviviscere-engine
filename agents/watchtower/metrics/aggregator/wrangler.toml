@@ -1,0 +1,18 @@
+name = "metrics-aggregator-worker"
+main = "index.js"
+compatibility_date = "2025-07-10"
+account_id = "eaf222560683a3733091c68032405220"
+
+[[kv_namespaces]]
+binding = "WATCHTOWER_METRICS"
+id = "4390293a699345298ad5fed03ef30602"
+
+[[kv_namespaces]]
+binding = "METRICS_AGGREGATES"
+id = "f5d7304e29ec4ed9908af314cca584de"
+
+[vars]
+MIW_INGEST_URL = "https://metrics-ingestion-worker.nolanaug.workers.dev"
+
+[triggers]
+crons = ["*/10 * * * *"]

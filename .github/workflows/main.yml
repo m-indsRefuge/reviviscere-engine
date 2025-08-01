@@ -1,0 +1,36 @@
+# .github/workflows/main.yml
+
+name: Reviviscere Engine CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # This job runs tests for any changed agent or worker
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      # This matrix will eventually list all testable units
+      matrix:
+        project: [ 'agents/watchtower' ] # Start with just watchtower
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Use the project name from the matrix to target the correct directory
+      - name: Install dependencies for ${{ matrix.project }}
+        run: npm --prefix ./${{ matrix.project }} install
+
+      - name: Run tests for ${{ matrix.project }}
+        run: npm --prefix ./${{ matrix.project }} test
