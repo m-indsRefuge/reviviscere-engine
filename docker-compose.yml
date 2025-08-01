@@ -1,17 +1,20 @@
 # docker-compose.yml
 
-version: '3.8'
-
 services:
   ollama:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
-    entrypoint: /bin/bash
-    # --- MODIFIED: Use environment variable OLLAMA_MODEL_NAME with a fallback ---
-    command: -c "ollama pull ${OLLAMA_MODEL_NAME:-gemma:2b} && ollama serve"
+    command:
+      - /bin/sh
+      - -c
+      - |
+        ollama serve &
+        PID=$!
+        ollama pull ${OLLAMA_MODEL_NAME:-gemma:2b}
+        wait $PID
     environment:
-      - OLLAMA_MODEL_NAME # Declare that this service expects this environment variable
+      - OLLAMA_MODEL_NAME
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:11434"]
       interval: 10s
