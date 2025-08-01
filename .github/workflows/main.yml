@@ -17,7 +17,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # --- MODIFIED: Use modern 'docker compose' command ---
       - name: Start Docker Compose environment
         run: docker compose up -d
 
@@ -38,24 +37,21 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
+      # --- MODIFIED: Use the correct --config flag for the wrangler deploy command ---
       - name: Deploy to Cloudflare Preview and capture URL
         id: deploy_preview
         run: |
-          # Deploy and capture the full output
-          output=$(wrangler deploy ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview)
-          # Extract the URL and save it to a GitHub Actions output variable
+          output=$(wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview)
           echo "worker_url=$(echo "$output" | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
 
       - name: Install Watchtower test dependencies
         run: npm --prefix ./agents/watchtower install
 
       - name: Run Vitest E2E tests against Preview
-        # Pass the preview URL from the previous step's output as an environment variable
         env:
           BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
         run: npx vitest run --root ./agents/watchtower
 
-      # --- NEW: This step runs regardless of success or failure to ensure cleanup ---
       - name: Teardown Docker Compose environment
         if: always()
         run: docker compose down
