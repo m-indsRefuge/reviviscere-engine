@@ -9,7 +9,6 @@ on:
     branches: [ main ]
 
 jobs:
-  # This job now runs a full end-to-end test in a Docker environment
   e2e-test:
     name: Run End-to-End Tests
     runs-on: ubuntu-latest
@@ -18,17 +17,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # --- MODIFIED: Use modern 'docker compose' command ---
       - name: Start Docker Compose environment
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for services to be ready
-        # This simple sleep is often enough for services to initialize.
-        # More advanced scripts could poll the ngrok API until it's ready.
         run: sleep 15
 
       - name: Extract ngrok Tunnel URL
-        # This command queries the ngrok container's API to get the public URL
-        # and saves it to an environment variable for later steps.
         run: echo "NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')" >> $GITHUB_ENV
 
       - name: Display ngrok URL
@@ -42,18 +38,28 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      - name: Deploy to Cloudflare Preview
-        # We deploy to a temporary preview environment for testing
-        run: wrangler deploy ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview
+      - name: Deploy to Cloudflare Preview and capture URL
+        id: deploy_preview
+        run: |
+          # Deploy and capture the full output
+          output=$(wrangler deploy ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview)
+          # Extract the URL and save it to a GitHub Actions output variable
+          echo "worker_url=$(echo "$output" | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
 
       - name: Install Watchtower test dependencies
         run: npm --prefix ./agents/watchtower install
 
       - name: Run Vitest E2E tests against Preview
-        # We pass the live preview URL to the test suite
-        run: npx vitest run --root ./agents/watchtower --env.BASE_URL=$(cat dist-preview/worker-url.txt)
+        # Pass the preview URL from the previous step's output as an environment variable
+        env:
+          BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
+        run: npx vitest run --root ./agents/watchtower
 
-  # The deploy job now depends on the successful completion of our new e2e-test job
+      # --- NEW: This step runs regardless of success or failure to ensure cleanup ---
+      - name: Teardown Docker Compose environment
+        if: always()
+        run: docker compose down
+  
   deploy:
     name: Deploy to Cloudflare Production
     runs-on: ubuntu-latest
