@@ -59,11 +59,24 @@ router.all('/config', (request, env) => {
   return stub.fetch(request);
 });
 
-// --- MODIFIED: Added a wildcard to match sub-paths like /logs/dump ---
 router.all('/logs/*', (request, env) => {
   const id = env.LOGGER_DO.idFromName('logger');
   const stub = env.LOGGER_DO.get(id);
   return stub.fetch(request);
+});
+
+// --- ADDED: Route to view metrics from KV store ---
+router.get('/metrics', withAuth, async (request, env) => {
+  try {
+    const kvList = await env.WATCHTOWER_METRICS.list();
+    const keys = kvList.keys.map(k => k.name); // Extract just the names
+    return new Response(JSON.stringify(keys), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e) {
+    console.error('Failed to get metrics from KV:', e.message);
+    return new Response(JSON.stringify({ error: 'Could not retrieve metrics.' }), { status: 500 });
+  }
 });
 
 router.all('/inspect', (request, env) => {
