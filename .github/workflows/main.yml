@@ -1,44 +1,35 @@
-# This file should be created at: .github/workflows/main.yml
+# .github/workflows/main.yml
 
-# 1. Workflow Name
 name: Reviviscere Engine CI/CD
 
-# 2. Trigger Conditions
 on:
-  # Run on pushes to the main branch
   push:
     branches: [ main ]
-  # Also run on pull requests targeting the main branch
   pull_request:
     branches: [ main ]
 
-# 3. Jobs to be executed
 jobs:
-  # The 'test' job is our first stage: Continuous Integration
   test:
     name: Run Tests
-    runs-on: ubuntu-latest # Use a standard Linux runner
+    runs-on: ubuntu-latest
 
     strategy:
-      # This matrix will eventually list all testable units in the monorepo
       matrix:
-        project: [ 'agents/watchtower' ] # We start with just the watchtower agent
+        project: [ 'agents/watchtower' ]
 
     steps:
-      # Step 1: Check out the source code from the repository
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up the Node.js environment
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Step 3: Install dependencies for the specific project from the matrix
       - name: Install dependencies for ${{ matrix.project }}
         run: npm --prefix ./${{ matrix.project }} install
 
-      # Step 4: Run the Vitest test suite for the specific project
+      # --- MODIFIED: Use npx to run the test command ---
+      # This is the standard and more reliable way to execute package binaries in CI.
       - name: Run tests for ${{ matrix.project }}
-        run: npm --prefix ./${{ matrix.project }} test
+        run: npx vitest run --root ./${{ matrix.project }}
