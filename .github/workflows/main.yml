@@ -9,31 +9,55 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    name: Run Tests
+  # This job now runs a full end-to-end test in a Docker environment
+  e2e-test:
+    name: Run End-to-End Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [ 'agents/watchtower' ]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Start Docker Compose environment
+        run: docker-compose up -d
+
+      - name: Wait for services to be ready
+        # This simple sleep is often enough for services to initialize.
+        # More advanced scripts could poll the ngrok API until it's ready.
+        run: sleep 15
+
+      - name: Extract ngrok Tunnel URL
+        # This command queries the ngrok container's API to get the public URL
+        # and saves it to an environment variable for later steps.
+        run: echo "NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')" >> $GITHUB_ENV
+
+      - name: Display ngrok URL
+        run: echo "Tunnel is live at ${{ env.NGROK_URL }}"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install dependencies for ${{ matrix.project }}
-        run: npm --prefix ./${{ matrix.project }} install
-      - name: Run tests for ${{ matrix.project }}
-        run: npx vitest run --root ./${{ matrix.project }}
 
-  # +++ NEW: Stage 2 - Continuous Deployment Job +++
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy to Cloudflare Preview
+        # We deploy to a temporary preview environment for testing
+        run: wrangler deploy ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ env.NGROK_URL }} --outdir=dist-preview
+
+      - name: Install Watchtower test dependencies
+        run: npm --prefix ./agents/watchtower install
+
+      - name: Run Vitest E2E tests against Preview
+        # We pass the live preview URL to the test suite
+        run: npx vitest run --root ./agents/watchtower --env.BASE_URL=$(cat dist-preview/worker-url.txt)
+
+  # The deploy job now depends on the successful completion of our new e2e-test job
   deploy:
-    name: Deploy to Cloudflare
+    name: Deploy to Cloudflare Production
     runs-on: ubuntu-latest
-    # This job needs the 'test' job to succeed first
-    needs: test
-    # This job should only run on a push to the main branch, not on pull requests
+    needs: e2e-test
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -41,10 +65,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy Watchtower Agent
-        # This step will only run if the 'agents/watchtower' directory has changed
-        if: contains(github.event.head_commit.modified, 'agents/watchtower/') || contains(github.event.head_commit.added, 'agents/watchtower/')
+        if: contains(github.event.head_commit.modified, 'agents/watchtower/')
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # Tell Wrangler where the config file is for this specific agent
           command: deploy --config ./agents/watchtower/wrangler.toml
