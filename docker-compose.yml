@@ -4,21 +4,42 @@ version: '3.8'
 
 services:
   ollama:
+    # Use the latest Ollama image
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
+    # --- MODIFIED: Command to pull the gemma:2b model on startup ---
+    # This command will first pull the model and then run the Ollama server,
+    # ensuring the model is available before ngrok tries to connect.
+    command: >
+      /bin/bash -c "ollama pull gemma:2b && ollama serve"
+    # Add a health check to wait for the model to be ready
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   ngrok:
     image: ngrok/ngrok:latest
     depends_on:
-      - ollama
-    # --- MODIFIED: Added the header to skip the browser warning ---
+      # Use `service_healthy` to ensure ollama is fully up and running
+      # and its model is loaded before ngrok starts.
+      ollama:
+        condition: service_healthy
     command: http ollama:11434 --log=stdout --request-header-add "ngrok-skip-browser-warning:true"
     ports:
       - "4040:4040"
 
   test-runner:
+    # Use the Dockerfile from the current directory to build this service
     build: .
+    # The command is good for keeping the container alive
     command: tail -f /dev/null
-    volumes:
-      - .:/app
+    # --- MODIFIED: Removed the volume mount ---
+    # The `COPY . .` command in the Dockerfile is sufficient.
+    # Removing the volume mount avoids potential issues with bind mounts in CI.
+    # volumes:
+    #   - .:/app
+    # You might want to explicitly set the network if needed, but the default compose network is usually sufficient
+    # for services to talk to each other by name (e.g., `ollama:11434`).
