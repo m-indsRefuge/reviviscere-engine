@@ -18,105 +18,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Start Docker Compose environment
-        # Keep -d to allow the workflow to continue and get logs from the failed container
         run: docker compose up -d
-
-      # --- NEW STEP: Wait for services to be ready for debugging ---
-      # A brief pause to allow containers to attempt to start and generate logs
-      - name: Wait for service startup
-        run: sleep 10
-
-      # --- NEW STEP: Get logs from the failed ollama service ---
-      - name: Get Ollama logs for debugging
-        # The `if` condition ensures this step only runs if the previous step failed
-        # which is what we expect from the `ollama` container exiting.
-        if: failure()
-        run: docker compose logs ollama
-
-      - name: Extract ngrok Tunnel URL
-        id: get_ngrok_url
-        run: echo "NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')" >> $GITHUB_OUTPUT
-
-      - name: Display ngrok URL
-        run: echo "Tunnel is live at ${{ steps.get_ngrok_url.outputs.NGROK_URL }}"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wrangler
-        run: npm install -g wrangler
-
-      - name: Deploy to Cloudflare Preview and capture URL
-        id: deploy_preview
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          # Use --json output for reliable URL extraction
-          # The --var option can be directly used in wrangler.toml, or passed like this.
-          # Ensure 'WATCHtower_MODEL_URL' in wrangler.toml is a binding that expects a URL.
-          # If it's a global variable set via --var, it should be fine.
-          deploy_output=$(wrangler deploy \
-            --config ./agents/watchtower/wrangler.toml \
-            --var WATCHtower_MODEL_URL:"${{ steps.get_ngrok_url.outputs.NGROK_URL }}" \
-            --outdir=dist-preview \
-            --json \
-            2>&1) # Redirect stderr to stdout for capturing potential errors in JSON format too
-
-          echo "Full JSON deploy output:"
-          echo "$deploy_output"
-
-          # Extract the URL using jq. 'jq -r .result.url' is typical for Cloudflare API responses.
-          # For wrangler deploy --json, it often outputs top-level fields for success/errors.
-          # Let's assume the successful deploy URL is under a 'url' field directly or nested.
-          # If 'result' is present, it's typically '.result.url'. If not, just '.url'.
-          # You might need to inspect the exact JSON output to confirm the path.
-          # For now, let's try common paths.
-          # We'll try to extract from 'result.url' first, then fallback to direct 'url'.
-          worker_url=$(echo "$deploy_output" | jq -r '.result.url // .url')
-
-          if [ -z "$worker_url" ] || [ "$worker_url" == "null" ]; then
-            echo "::error::Failed to capture preview worker URL from JSON output."
-            # Also echo the raw output to help debug in case of malformed JSON or unexpected structure
-            echo "::error::Raw Wrangler JSON Output for Debugging:"
-            echo "$deploy_output"
-            exit 1
-          fi
-
-          echo "worker_url=$worker_url" >> $GITHUB_OUTPUT
-
-      - name: Install Watchtower test dependencies
-        run: npm --prefix ./agents/watchtower install
-
-      - name: Run Vitest E2E tests against Preview
-        env:
-          BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
-          API_KEY: ${{ secrets.API_KEY }} # Ensure this secret is set in GitHub
-        run: npx vitest run --root ./agents/watchtower
-
-      - name: Teardown Docker Compose environment# .github/workflows/main.yml
-
-name: Reviviscere Engine CI/CD
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  e2e-test:
-    name: Run End-to-End Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Start Docker Compose environment
-        run: docker compose up -d
-        # --- MODIFIED: Pass OLLAMA_MODEL_NAME to Docker Compose ---
         env:
           OLLAMA_MODEL_NAME: gemma:2b # Explicitly set the model for Watchtower
 
@@ -124,7 +26,7 @@ jobs:
         run: sleep 10
 
       - name: Get Ollama logs for debugging
-        if: failure()
+        if: failure() # This step runs if any previous step in this job fails
         run: docker compose logs ollama
 
       - name: Extract ngrok Tunnel URL
@@ -178,25 +80,7 @@ jobs:
         run: npx vitest run --root ./agents/watchtower
 
       - name: Teardown Docker Compose environment
-        if: always()
-        run: docker compose down
-
-  deploy-production:
-    name: Deploy Watchtower to Production
-    runs-on: ubuntu-latest
-    needs: e2e-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy Watchtower Agent
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --config ./agents/watchtower/wrangler.toml
-        if: always()
+        if: always() # Ensure cleanup runs even if tests fail
         run: docker compose down
 
   deploy-production:
