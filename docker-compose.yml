@@ -3,33 +3,22 @@
 version: '3.8'
 
 services:
-  # 1. The Ollama Model Server
   ollama:
     image: ollama/ollama:latest
-    # This makes the Ollama server accessible to other services in this file
-    # under the hostname 'ollama' on port 11434.
     ports:
       - "11434:11434"
 
-  # 2. The ngrok Tunnel Service
   ngrok:
     image: ngrok/ngrok:latest
-    # This service depends on the 'ollama' service being available first.
     depends_on:
       - ollama
-    # The command tells ngrok to create a tunnel to the 'ollama' service
-    # using Docker's internal DNS.
-    command: http ollama:11434 --log=stdout
+    # --- MODIFIED: Added the header to skip the browser warning ---
+    command: http ollama:11434 --log=stdout --request-header-add "ngrok-skip-browser-warning:true"
     ports:
-      # This exposes the ngrok web interface so our CI script can get the public URL.
       - "4040:4040"
 
-  # 3. Our Custom Test Runner Service
   test-runner:
-    # This tells Docker Compose to build the image using the Dockerfile we just created.
     build: .
-    # This keeps the container running so we can execute commands in it.
     command: tail -f /dev/null
-    # Mount the local code directory into the container so any changes are reflected.
     volumes:
       - .:/app

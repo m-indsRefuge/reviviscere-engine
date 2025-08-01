@@ -9,9 +9,29 @@ on:
     branches: [ main ]
 
 jobs:
+  # This job identifies which agent has changed
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      # An output variable will be true if the watchtower code changed
+      watchtower: ${{ steps.filter.outputs.watchtower }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            watchtower:
+              - 'agents/watchtower/**'
+
   e2e-test:
     name: Run End-to-End Tests
     runs-on: ubuntu-latest
+    # This job now depends on the 'changes' job
+    needs: changes
+    # And it only runs if the watchtower code has actually changed
+    if: needs.changes.outputs.watchtower == 'true'
 
     steps:
       - name: Checkout code
@@ -37,7 +57,6 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler
 
-      # --- MODIFIED: Pass the API token secret as an environment variable ---
       - name: Deploy to Cloudflare Preview and capture URL
         id: deploy_preview
         env:
@@ -52,7 +71,7 @@ jobs:
       - name: Run Vitest E2E tests against Preview
         env:
           BASE_URL: ${{ steps.deploy_preview.outputs.worker_url }}
-          API_KEY: ${{ vars.API_KEY || secrets.API_KEY }} # Use Repository Variable or Secret for API Key
+          API_KEY: ${{ secrets.API_KEY }}
         run: npx vitest run --root ./agents/watchtower
 
       - name: Teardown Docker Compose environment
@@ -60,26 +79,20 @@ jobs:
         run: docker compose down
   
   deploy:
-    name: Deploy to Cloudflare Production
+    name: Deploy Watchtower to Production
     runs-on: ubuntu-latest
-    needs: e2e-test
-    if: github.ref == 'refs/heads/main'
+    # This job now depends on both 'changes' and 'e2e-test'
+    needs: [changes, e2e-test]
+    # It only runs on a push to main, and only if the watchtower code changed
+    if: github.ref == 'refs/heads/main' && needs.changes.outputs.watchtower == 'true'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # This is the corrected, syntactically valid deployment step
       - name: Deploy Watchtower Agent
-        # This condition needs to be more robust for pull requests vs. pushes
-        # For now, we simplify it to always check the repo state
-        run: |
-          if git diff --quiet HEAD^ HEAD -- ./agents/watchtower/; then
-            echo "No changes in agents/watchtower, skipping deployment."
-          else
-            echo "Changes detected in agents/watchtower, proceeding with deployment."
-            # The official action is the best way to handle deployment
-            npm install -g wrangler
-            wrangler deploy --config ./agents/watchtower/wrangler.toml
-          fi
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy --config ./agents/watchtower/wrangler.toml
