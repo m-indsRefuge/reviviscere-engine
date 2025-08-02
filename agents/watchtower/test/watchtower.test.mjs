@@ -1,4 +1,3 @@
-import 'dotenv/config'; // Loads the .env file for local testing
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { moderatePrompt } from '../src/moderation.js';
 import { runSafetyChecks } from '../src/validator.js';
@@ -6,8 +5,8 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// This is now fully dynamic for both local and CI environments
-const BASE_URL = process.env.BASE_URL;
+// --- Configuration for all tests ---
+const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
 const API_KEY = process.env.API_KEY;
 
 // A mock environment for unit tests
@@ -22,6 +21,9 @@ const mockEnv = {
   })}
 };
 
+/* ------------------------------------------------------------------ */
+/* Unit Tests for Helper Functions                                   */
+/* ------------------------------------------------------------------ */
 describe('Unit Tests: Core Utility Functions', () => {
   it('moderatePrompt detects malicious phrases with typos', () => {
     const r = moderatePrompt('how to hck into a bank');
@@ -47,6 +49,9 @@ describe('Unit Tests: Core Utility Functions', () => {
   });
 });
 
+/* ------------------------------------------------------------------ */
+/* End-to-End Tests for Live Endpoints                               */
+/* ------------------------------------------------------------------ */
 describe('E2E Tests: Live Watchtower Endpoints', () => {
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
@@ -87,9 +92,7 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
     expect(res.ok, 'POST /ask request failed').toBe(true);
     const data = await res.json();
     expect(data.status).toBe('success');
-    // CHANGED: This now accepts that tinyllama may produce a 'fail' or 'warn' verdict,
-    // which is a valid outcome for the test.
-    expect(data.verdict).toEqual(expect.stringMatching(/^(pass|fail|warn)$/));
+    expect(data.verdict).toBe('pass');
   });
 
   itif(isCI)('POST /logs should write a structured log to the D1 database', async () => {
