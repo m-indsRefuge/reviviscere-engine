@@ -6,9 +6,9 @@ import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
 // --- Configuration for all tests ---
-// CORRECTED: This now correctly reads the variable from the CI environment
-// with a fallback for local testing.
-const BASE_URL = process.env.BASE_URL || 'https://watchtower-agent-worker.nolanaug.workers.dev';
+// CORRECTED: This now reads the URL from the command-line arguments.
+// This is the most direct and reliable way to pass the URL.
+const BASE_URL = process.argv.find(arg => arg.startsWith('https://'));
 const API_KEY = process.env.API_KEY || '4f7e2d3a9b5f4c78a1d6e9f023b5c412';
 
 // A mock environment for unit tests
@@ -59,30 +59,28 @@ describe('Unit Tests: Core Utility Functions', () => {
 /* End-to-End Tests for Live Endpoints                               */
 /* ------------------------------------------------------------------ */
 describe('E2E Tests: Live Watchtower Endpoints', () => {
-  // Skip E2E tests if not in a CI environment
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
 
   beforeAll(async () => {
-    itif(isCI)(async () => {
-      console.log(`--- E2E: Setting up live configuration via POST /config on ${BASE_URL} ---`);
-      const configPayload = {
-        modelUrl: "http://placeholder.io",
-        apiKey: API_KEY,
-        promptTemplate: "Is the following text logically sound and ethically neutral? Respond with only a JSON object with keys 'verdict' (pass/fail) and 'reason'. Text: {inputText}",
-        PHRASE_WEIGHTS: {
-          "as an ai": 5, "i cannot provide": 5, "it's possible that": 3
-        },
-        MODEL_TIMEOUT_MS: 60000
-      };
-      const res = await fetch(`${BASE_URL}/config`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(configPayload)
-      });
-      expect(res.status, 'Configuration setup failed').toBe(200);
-    }, 60000);
-  });
+    if (!isCI) return;
+    console.log(`--- E2E: Setting up live configuration via POST /config on ${BASE_URL} ---`);
+    const configPayload = {
+      modelUrl: "http://placeholder.io",
+      apiKey: API_KEY,
+      promptTemplate: "Is the following text logically sound and ethically neutral? Respond with only a JSON object with keys 'verdict' (pass/fail) and 'reason'. Text: {inputText}",
+      PHRASE_WEIGHTS: {
+        "as an ai": 5, "i cannot provide": 5, "it's possible that": 3
+      },
+      MODEL_TIMEOUT_MS: 60000
+    };
+    const res = await fetch(`${BASE_URL}/config`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(configPayload)
+    });
+    expect(res.status, 'Configuration setup failed').toBe(200);
+  }, 60000);
 
   itif(isCI)('GET /config should retrieve the live configuration', async () => {
     const res = await fetch(`${BASE_URL}/config`, { headers: { 'Authorization': `Bearer ${API_KEY}` } });

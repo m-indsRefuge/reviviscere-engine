@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "wrangler dev",
-    "test": "vitest run",
-    "test:ci": "vitest run --env-file .test.env"
+    "test": "vitest run"
   },
   "dependencies": {
     "itty-router": "^4.2.2"
