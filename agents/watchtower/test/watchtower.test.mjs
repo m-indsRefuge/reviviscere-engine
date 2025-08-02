@@ -5,12 +5,12 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// Reads the URL from the command-line arguments passed by the npm script
-const BASE_URL = process.argv.find(arg => arg.startsWith('https://'));
-const API_KEY = process.env.API_KEY || '4f7e2d3a9b5f4c78a1d6e9f023b5c412';
+// --- Configuration for all tests ---
+// CORRECTED: This now reads the variable from the environment, which the npm script provides.
+const BASE_URL = process.env.BASE_URL;
+const API_KEY = process.env.API_KEY;
 
-// ... rest of file is unchanged
-
+// A mock environment for unit tests
 const mockEnv = {
   WATCHTOWER_METRICS: { put: vi.fn(), get: vi.fn() },
   WATCHTOWER_LOGS: { put: vi.fn() },
@@ -22,6 +22,9 @@ const mockEnv = {
   })}
 };
 
+/* ------------------------------------------------------------------ */
+/* Unit Tests for Helper Functions                                   */
+/* ------------------------------------------------------------------ */
 describe('Unit Tests: Core Utility Functions', () => {
   it('moderatePrompt detects malicious phrases with typos', () => {
     const r = moderatePrompt('how to hck into a bank');
@@ -47,6 +50,9 @@ describe('Unit Tests: Core Utility Functions', () => {
   });
 });
 
+/* ------------------------------------------------------------------ */
+/* End-to-End Tests for Live Endpoints                               */
+/* ------------------------------------------------------------------ */
 describe('E2E Tests: Live Watchtower Endpoints', () => {
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
