@@ -6,10 +6,10 @@ import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
 // --- Configuration for all tests ---
-// This URL is used for local testing. In the CI/CD pipeline,
-// this will be dynamically replaced by the preview deployment URL.
-const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
-const API_KEY = '4f7e2d3a9b5f4c78a1d6e9f023b5c412'; // A dummy key for testing
+// CORRECTED: This now correctly reads the variable from the CI environment
+// with a fallback for local testing.
+const BASE_URL = process.env.BASE_URL || 'https://watchtower-agent-worker.nolanaug.workers.dev';
+const API_KEY = process.env.API_KEY || '4f7e2d3a9b5f4c78a1d6e9f023b5c412';
 
 // A mock environment for unit tests
 const mockEnv = {
@@ -28,7 +28,7 @@ const mockEnv = {
 /* ------------------------------------------------------------------ */
 describe('Unit Tests: Core Utility Functions', () => {
   it('moderatePrompt detects malicious phrases with typos', () => {
-    const r = moderatePrompt('how to hck into a bank'); // "hck" is a typo for "hack"
+    const r = moderatePrompt('how to hck into a bank');
     expect(r.status).toBe('FAIL');
     expect(r.issues[0]).toContain('hack into');
   });
@@ -59,40 +59,40 @@ describe('Unit Tests: Core Utility Functions', () => {
 /* End-to-End Tests for Live Endpoints                               */
 /* ------------------------------------------------------------------ */
 describe('E2E Tests: Live Watchtower Endpoints', () => {
-
-  // Skip E2E tests if the BASE_URL is not set in the CI environment
+  // Skip E2E tests if not in a CI environment
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
 
   beforeAll(async () => {
-    if (!isCI) return; // Only run config setup in CI
-    console.log(`--- E2E: Setting up live configuration via POST /config on ${process.env.BASE_URL} ---`);
-    const configPayload = {
-      modelUrl: "http://placeholder.io",
-      apiKey: API_KEY,
-      promptTemplate: "Is the following text logically sound and ethically neutral? Respond with only a JSON object with keys 'verdict' (pass/fail) and 'reason'. Text: {inputText}",
-      PHRASE_WEIGHTS: {
-        "as an ai": 5, "i cannot provide": 5, "it's possible that": 3
-      },
-      MODEL_TIMEOUT_MS: 60000
-    };
-    const res = await fetch(`${process.env.BASE_URL}/config`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(configPayload)
-    });
-    expect(res.status, 'Configuration setup failed').toBe(200);
-  }, 60000);
+    itif(isCI)(async () => {
+      console.log(`--- E2E: Setting up live configuration via POST /config on ${BASE_URL} ---`);
+      const configPayload = {
+        modelUrl: "http://placeholder.io",
+        apiKey: API_KEY,
+        promptTemplate: "Is the following text logically sound and ethically neutral? Respond with only a JSON object with keys 'verdict' (pass/fail) and 'reason'. Text: {inputText}",
+        PHRASE_WEIGHTS: {
+          "as an ai": 5, "i cannot provide": 5, "it's possible that": 3
+        },
+        MODEL_TIMEOUT_MS: 60000
+      };
+      const res = await fetch(`${BASE_URL}/config`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(configPayload)
+      });
+      expect(res.status, 'Configuration setup failed').toBe(200);
+    }, 60000);
+  });
 
   itif(isCI)('GET /config should retrieve the live configuration', async () => {
-    const res = await fetch(`${process.env.BASE_URL}/config`, { headers: { 'Authorization': `Bearer ${API_KEY}` } });
+    const res = await fetch(`${BASE_URL}/config`, { headers: { 'Authorization': `Bearer ${API_KEY}` } });
     expect(res.ok, 'GET /config request failed').toBe(true);
     const data = await res.json();
     expect(data.MODEL_TIMEOUT_MS).toBe(60000);
   });
 
   itif(isCI)('POST /ask should validate a safe prompt and return a PASS verdict', { timeout: 120000 }, async () => {
-    const res = await fetch(`${process.env.BASE_URL}/ask`, {
+    const res = await fetch(`${BASE_URL}/ask`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ prompt: 'Explain separation of concerns in software engineering.' })
@@ -104,7 +104,7 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
   });
 
   itif(isCI)('POST /logs should write a structured log to the D1 database', async () => {
-    const res = await fetch(`${process.env.BASE_URL}/logs`, {
+    const res = await fetch(`${BASE_URL}/logs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -115,8 +115,8 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
   });
 
   itif(isCI)('GET /logs/dump should retrieve logs from the D1 database', async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000)); // allow time for log to process
-    const res = await fetch(`${process.env.BASE_URL}/logs/dump`, { method: 'GET' });
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const res = await fetch(`${BASE_URL}/logs/dump`, { method: 'GET' });
     expect(res.ok, 'GET /logs/dump request failed').toBe(true);
     const text = await res.text();
     expect(text).toContain('Vitest Suite');
