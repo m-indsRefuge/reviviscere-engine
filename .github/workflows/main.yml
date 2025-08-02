@@ -56,9 +56,11 @@ jobs:
 
       - name: Extract Preview URL from Output File
         id: extract_url
-        # This now uses grep on the file we created
-        run: echo "worker_url=$(cat deployment-output.txt | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
-
+        run: |
+          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt)
+          echo "Extracted URL: $URL"
+          echo "worker_url=$URL" >> $GITHUB_OUTPUT
+          
       - name: Run Vitest E2E tests against Preview
         env:
           BASE_URL: ${{ steps.extract_url.outputs.worker_url }}
