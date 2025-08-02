@@ -59,13 +59,14 @@ jobs:
           echo "BASE_URL=$URL" > ./agents/watchtower/.test.env
 
       - name: Run Vitest E2E tests against Preview
-        # CHANGED: Set the working directory for this step
         working-directory: ./agents/watchtower
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # CHANGED: The command is now simpler because we are in the correct directory
-        run: npx vitest run --env-file .test.env
+        # CHANGED: Add chmod command to ensure the script is executable
+        run: |
+          chmod +x ./node_modules/.bin/vitest
+          npx vitest run --env-file .test.env
 
       - name: Teardown Docker Compose environment
         if: always()
