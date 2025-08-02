@@ -5,7 +5,7 @@ compatibility_date = "2025-06-30"
 [vars]
 API_KEY = "4f7e2d3a9b5f4c78a1d6e9f023b5c412"
 WATCHTOWER_MODEL_NAME = "gemma:2b"
-WATCHTOWER_MODEL_URL = "https://6700962e921c.ngrok-free.app"
+WATCHTOWER_MODEL_URL = "https://e99c4bdfcca3.ngrok-free.app"
 MIW_INGEST_URL = "https://metrics-ingestion-worker.nolanaug.workers.dev"
 
 # +++ NEW: D1 Database Binding +++
