@@ -5,8 +5,6 @@ FROM ollama/ollama:latest
 # Switch to the root user to install packages
 USER root
 
-# Update package lists and install curl
+# Update package lists and install curl. The rest of the
+# container's processes will run as the root user.
 RUN apt-get update && apt-get install -y curl
-
-# Switch back to the default ollama user for security
-USER ollama
