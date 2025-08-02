@@ -45,13 +45,11 @@ jobs:
           npm install -g wrangler
 
       - name: Deploy to Cloudflare Preview and Capture Output
-        # We now run wrangler directly and save its output to a file
         run: wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} > deployment-output.txt
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Display Deployment Output
-        # This diagnostic step shows us the captured output
         run: cat deployment-output.txt
 
       - name: Extract Preview URL from Output File
@@ -60,13 +58,15 @@ jobs:
           URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
           echo "Extracted URL: $URL"
           echo "worker_url=$URL" >> $GITHUB_OUTPUT
-                    
+
       - name: Run Vitest E2E tests against Preview
         env:
-          BASE_URL: ${{ steps.extract_url.outputs.worker_url }}
+          # The API_KEY and CI variables remain here
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        run: npx vitest run --root ./agents/watchtower
+        # The BASE_URL is now passed directly to the command
+        run: |
+          BASE_URL=${{ steps.extract_url.outputs.worker_url }} npx vitest run --root ./agents/watchtower
 
       - name: Teardown Docker Compose environment
         if: always()
