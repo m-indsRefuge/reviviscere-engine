@@ -1,4 +1,12 @@
 # Dockerfile.ollama
-# Use the official Ollama image as a starting point.
-# The model will be pulled by the docker-compose command at runtime.
+# Use the official Ollama image as a starting point
 FROM ollama/ollama:latest
+
+# Switch to the root user to install packages
+USER root
+
+# Update package lists and install curl
+RUN apt-get update && apt-get install -y curl
+
+# Switch back to the default ollama user for security
+USER ollama
