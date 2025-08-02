@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "wrangler dev",
-    "test": "BASE_URL=$1 vitest run"
+    "test": "sh -c 'BASE_URL=$0 vitest run' --"
   },
   "dependencies": {
     "itty-router": "^4.2.2"
