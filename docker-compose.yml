@@ -2,21 +2,13 @@
 
 services:
   ollama:
-    image: ollama/ollama:latest
+    # Build our custom image instead of pulling from Docker Hub
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
     ports:
       - "11434:11434"
-    # Set the entrypoint to the shell
-    entrypoint: /bin/sh
-    # Provide the script to the shell
-    command:
-      - -c
-      - |
-        ollama serve &
-        PID=$$!
-        ollama pull $${OLLAMA_MODEL_NAME:-gemma:2b}
-        wait $$PID
-    environment:
-      - OLLAMA_MODEL_NAME
+    # The default command 'ollama serve' is now sufficient
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:11434"]
       interval: 10s

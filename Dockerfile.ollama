@@ -1,0 +1,6 @@
+# Dockerfile.ollama
+# Use the official Ollama image as a starting point
+FROM ollama/ollama:latest
+
+# Download and bake the gemma:2b model into the image during the build
+RUN ollama pull gemma:2b
