@@ -5,8 +5,12 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-const BASE_URL = process.argv.find(arg => arg.startsWith('https://'));
+// --- Configuration for all tests ---
+// Reverted to read from the environment variable, which is now set correctly by the npm script.
+const BASE_URL = process.env.BASE_URL;
 const API_KEY = process.env.API_KEY || '4f7e2d3a9b5f4c78a1d6e9f023b5c412';
+
+// ... rest of the file is unchanged
 
 const mockEnv = {
   WATCHTOWER_METRICS: { put: vi.fn(), get: vi.fn() },
