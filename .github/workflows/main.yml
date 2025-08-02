@@ -52,22 +52,19 @@ jobs:
       - name: Display Deployment Output
         run: cat deployment-output.txt
 
-      - name: Extract Preview URL from Output File
-        id: extract_url
+      # CHANGED: This step now writes the URL to a file instead of a GitHub output
+      - name: Create Test Environment File
         run: |
           URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
-          echo "Extracted URL: $URL"
-          echo "worker_url=$URL" >> $GITHUB_OUTPUT
+          echo "Creating .test.env file with BASE_URL=$URL"
+          echo "BASE_URL=$URL" > ./agents/watchtower/.test.env
 
       - name: Run Vitest E2E tests against Preview
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # Use a multi-line script with 'export' for maximum reliability
-        run: |
-          export BASE_URL=${{ steps.extract_url.outputs.worker_url }}
-          echo "Confirming BASE_URL is set to: $BASE_URL"
-          npx vitest run --root ./agents/watchtower
+        # CHANGED: This now tells Vitest to load its variables from our new file
+        run: npx vitest run --root ./agents/watchtower --env-file .test.env
 
       - name: Teardown Docker Compose environment
         if: always()
