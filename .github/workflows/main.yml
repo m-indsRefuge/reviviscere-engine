@@ -40,7 +40,6 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        # CHANGED: Delete the lock file to force a clean install from package.json
         run: |
           rm -f ./agents/watchtower/package-lock.json
           npm --prefix ./agents/watchtower install
@@ -65,7 +64,10 @@ jobs:
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        run: npm run test:ci
+        # Add chmod command to manually grant execute permission
+        run: |
+          chmod +x ./node_modules/.bin/vitest
+          npm run test:ci
 
       - name: Teardown Docker Compose environment
         if: always()
