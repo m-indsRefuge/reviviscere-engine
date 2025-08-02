@@ -57,10 +57,10 @@ jobs:
       - name: Extract Preview URL from Output File
         id: extract_url
         run: |
-          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt)
+          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
           echo "Extracted URL: $URL"
-          echo "worker_url=$URL" >> $GITHUB_OUTPUT
-          
+          echo "worker_url=$URL" >> $GITHUB_STEP_OUTPUT
+                    
       - name: Run Vitest E2E tests against Preview
         env:
           BASE_URL: ${{ steps.extract_url.outputs.worker_url }}
