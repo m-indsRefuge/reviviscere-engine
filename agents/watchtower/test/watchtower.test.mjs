@@ -1,3 +1,4 @@
+import 'dotenv/config'; // ADD THIS LINE AT THE VERY TOP
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { moderatePrompt } from '../src/moderation.js';
 import { runSafetyChecks } from '../src/validator.js';
@@ -6,7 +7,6 @@ import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
 // --- Configuration for all tests ---
-// CORRECTED: This now reads the variable from the environment, which the npm script provides.
 const BASE_URL = process.env.BASE_URL;
 const API_KEY = process.env.API_KEY;
 
