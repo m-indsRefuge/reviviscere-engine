@@ -49,12 +49,19 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Run Vitest E2E tests against Preview
+      - name: Display Deployment Output
+        run: cat deployment-output.txt
+      
+      # CHANGED: The extraction and test run are now in a single, combined step
+      - name: Extract URL and Run Vitest E2E tests
         working-directory: ./agents/watchtower
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        run: npm test -- ${{ steps.extract_url.outputs.worker_url }}
+        run: |
+          URL=$(grep -o 'https://[^ ]*workers.dev' ../../deployment-output.txt | tr -d '\r')
+          echo "Using BASE_URL: $URL"
+          npm test -- $URL
 
       - name: Teardown Docker Compose environment
         if: always()
