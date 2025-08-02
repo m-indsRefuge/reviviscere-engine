@@ -47,12 +47,18 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # The --outdir flag has been removed to allow the action to capture the URL
-          command: deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }}
+          # Re-add --outdir to generate a predictable JSON manifest file
+          command: deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --outdir=./dist-preview
+
+      - name: Extract Preview URL from file
+        id: extract_url
+        # This new step reads the manifest file and securely exports the URL
+        run: echo "worker_url=$(cat ./dist-preview/*.json | jq -r '.url')" >> $GITHUB_OUTPUT
 
       - name: Run Vitest E2E tests against Preview
         env:
-          BASE_URL: ${{ steps.deploy_preview.outputs.deployment-url }}
+          # Use the output from our new, reliable extraction step
+          BASE_URL: ${{ steps.extract_url.outputs.worker_url }}
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
         run: npx vitest run --root ./agents/watchtower
