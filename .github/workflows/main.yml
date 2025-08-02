@@ -61,12 +61,13 @@ jobs:
 
       - name: Run Vitest E2E tests against Preview
         env:
-          # The API_KEY and CI variables remain here
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # The BASE_URL is now passed directly to the command
+        # Use a multi-line script with 'export' for maximum reliability
         run: |
-          BASE_URL=${{ steps.extract_url.outputs.worker_url }} npx vitest run --root ./agents/watchtower
+          export BASE_URL=${{ steps.extract_url.outputs.worker_url }}
+          echo "Confirming BASE_URL is set to: $BASE_URL"
+          npx vitest run --root ./agents/watchtower
 
       - name: Teardown Docker Compose environment
         if: always()
