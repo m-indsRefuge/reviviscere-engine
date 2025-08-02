@@ -20,6 +20,7 @@ jobs:
       - name: Start Docker Compose environment
         env:
           OLLAMA_MODEL_NAME: tinyllama
+          # Pass the ngrok secret into the Docker environment
           NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
         run: docker compose up -d --wait
 
@@ -47,8 +48,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # The --outdir flag has been removed to allow the action to capture the URL
-          command: deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }}
+          command: deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --outdir=dist-preview
 
       - name: Run Vitest E2E tests against Preview
         env:

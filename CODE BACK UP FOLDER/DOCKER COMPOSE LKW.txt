@@ -1,0 +1,46 @@
+# docker-compose.yml
+
+services:
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+    ports:
+      - "11434:11434"
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        ollama serve &
+        PID=$$!
+        echo "Waiting for Ollama server to be ready..."
+        while ! curl -s -f http://localhost:11434 > /dev/null
+        do
+          sleep 1
+        done
+        echo "Ollama server is ready."
+        ollama pull $$OLLAMA_MODEL_NAME
+        wait $$PID
+    environment:
+      - OLLAMA_MODEL_NAME
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:11434"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    # Add the environment variable for the authtoken
+    environment:
+      - NGROK_AUTHTOKEN
+    command: http ollama:11434 --log=stdout --request-header-add "ngrok-skip-browser-warning:true"
+    ports:
+      - "4040:4040"
+
+  test-runner:
+    build: .
+    command: tail -f /dev/null
