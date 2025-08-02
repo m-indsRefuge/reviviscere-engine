@@ -12,7 +12,8 @@ jobs:
   # The E2E test job is the primary gatekeeper
   e2e-test:
     name: Run End-to-End Tests
-    runs-on: ubuntu-latest
+    # Request a more powerful runner to handle the model download
+    runs-on: your-larger-runner-label # <-- IMPORTANT: Replace this placeholder
 
     steps:
       - name: Checkout code
@@ -59,7 +60,7 @@ jobs:
         if: always()
         run: docker compose down
   
-  # The deploy job runs only after E2e tests pass on a push to main
+  # The deploy job runs only after E2E tests pass on a push to main
   deploy-production:
     name: Deploy Watchtower to Production
     runs-on: ubuntu-latest
