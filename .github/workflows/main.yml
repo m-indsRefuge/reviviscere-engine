@@ -39,27 +39,25 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Watchtower test dependencies
-        run: npm --prefix ./agents/watchtower install
+      - name: Install Dependencies
+        run: |
+          npm --prefix ./agents/watchtower install
+          npm install -g wrangler
 
-      - name: Deploy to Cloudflare Preview
-        id: deploy_preview
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --outdir=./dist-preview
+      - name: Deploy to Cloudflare Preview and Capture Output
+        # We now run wrangler directly and save its output to a file
+        run: wrangler deploy --config ./agents/watchtower/wrangler.toml --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} > deployment-output.txt
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      # --- NEW DIAGNOSTIC STEP 1 ---
-      - name: List generated files
-        run: ls -R ./dist-preview
+      - name: Display Deployment Output
+        # This diagnostic step shows us the captured output
+        run: cat deployment-output.txt
 
-      # --- NEW DIAGNOSTIC STEP 2 ---
-      - name: Display manifest content
-        run: cat ./dist-preview/*.json
-
-      - name: Extract Preview URL from file
+      - name: Extract Preview URL from Output File
         id: extract_url
-        run: echo "worker_url=$(cat ./dist-preview/*.json | jq -r '.url')" >> $GITHUB_OUTPUT
+        # This now uses grep on the file we created
+        run: echo "worker_url=$(cat deployment-output.txt | grep -o 'https://[^ ]*workers.dev')" >> $GITHUB_OUTPUT
 
       - name: Run Vitest E2E tests against Preview
         env:
