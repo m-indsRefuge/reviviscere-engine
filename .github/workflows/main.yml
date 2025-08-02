@@ -41,6 +41,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          # Force clear the npm cache to prevent stale package issues
+          npm cache clean --force
           npm --prefix ./agents/watchtower ci
           npm install -g wrangler
 
@@ -49,19 +51,18 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Display Deployment Output
-        run: cat deployment-output.txt
-      
-      # CHANGED: The extraction and test run are now in a single, combined step
-      - name: Extract URL and Run Vitest E2E tests
+      - name: Create Test Environment File
+        run: |
+          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
+          echo "BASE_URL=$URL" > ./agents/watchtower/.test.env
+
+      - name: Run Vitest E2E tests against Preview
         working-directory: ./agents/watchtower
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        run: |
-          URL=$(grep -o 'https://[^ ]*workers.dev' ../../deployment-output.txt | tr -d '\r')
-          echo "Using BASE_URL: $URL"
-          npm test -- $URL
+        # Use npx vitest@latest to bypass the corrupted local installation and run the newest version
+        run: npx vitest@latest run --env-file .test.env
 
       - name: Teardown Docker Compose environment
         if: always()
