@@ -49,18 +49,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Extract Preview URL from Output File
-        id: extract_url
-        run: |
-          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
-          echo "worker_url=$URL" >> $GITHUB_OUTPUT
-
       - name: Run Vitest E2E tests against Preview
         working-directory: ./agents/watchtower
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # CHANGED: We now pass the URL as a direct command-line argument
         run: npm test -- ${{ steps.extract_url.outputs.worker_url }}
 
       - name: Teardown Docker Compose environment

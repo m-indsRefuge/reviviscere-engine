@@ -5,13 +5,9 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// --- Configuration for all tests ---
-// CORRECTED: This now reads the URL from the command-line arguments.
-// This is the most direct and reliable way to pass the URL.
 const BASE_URL = process.argv.find(arg => arg.startsWith('https://'));
 const API_KEY = process.env.API_KEY || '4f7e2d3a9b5f4c78a1d6e9f023b5c412';
 
-// A mock environment for unit tests
 const mockEnv = {
   WATCHTOWER_METRICS: { put: vi.fn(), get: vi.fn() },
   WATCHTOWER_LOGS: { put: vi.fn() },
@@ -23,41 +19,31 @@ const mockEnv = {
   })}
 };
 
-/* ------------------------------------------------------------------ */
-/* Unit Tests for Helper Functions                                   */
-/* ------------------------------------------------------------------ */
 describe('Unit Tests: Core Utility Functions', () => {
   it('moderatePrompt detects malicious phrases with typos', () => {
     const r = moderatePrompt('how to hck into a bank');
     expect(r.status).toBe('FAIL');
     expect(r.issues[0]).toContain('hack into');
   });
-
   it('runSafetyChecks detects hallucination triggers from a dynamic config', async () => {
     const r = await runSafetyChecks('test prompt', 'As an AI, I speculate...', mockEnv);
     expect(r.status).toBe('FAIL');
     expect(r.score).toBeGreaterThanOrEqual(8);
   });
-
   it('fetchWithRetry handles a 404 error correctly', async () => {
     const res = await fetchWithRetry('https://example.com/non-existent-page.txt', {}, 1, 2000, mockEnv, 'trace-123');
     expect(res.status).toBe(404);
   });
-
   it('emitMetric calls the KV put method', async () => {
     await emitMetric('test_metric', { env: mockEnv });
     expect(mockEnv.WATCHTOWER_METRICS.put).toHaveBeenCalled();
   });
-
   it('logInteraction calls the KV put method', async () => {
     await logInteraction('prompt', 'response', 'trace-123', { env: mockEnv });
     expect(mockEnv.WATCHTOWER_LOGS.put).toHaveBeenCalled();
   });
 });
 
-/* ------------------------------------------------------------------ */
-/* End-to-End Tests for Live Endpoints                               */
-/* ------------------------------------------------------------------ */
 describe('E2E Tests: Live Watchtower Endpoints', () => {
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
