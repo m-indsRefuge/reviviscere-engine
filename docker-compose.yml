@@ -11,22 +11,15 @@ services:
     command:
       - -c
       - |
-        # Start the server in the background
         ollama serve &
         PID=$$!
-        
-        # Wait for the server to be ready before proceeding
         echo "Waiting for Ollama server to be ready..."
         while ! curl -s -f http://localhost:11434 > /dev/null
         do
           sleep 1
         done
         echo "Ollama server is ready."
-
-        # Now that the server is ready, pull the model
         ollama pull $$OLLAMA_MODEL_NAME
-        
-        # Wait for the background server process to finish
         wait $$PID
     environment:
       - OLLAMA_MODEL_NAME
@@ -41,6 +34,9 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+    # Add the environment variable for the authtoken
+    environment:
+      - NGROK_AUTHTOKEN
     command: http ollama:11434 --log=stdout --request-header-add "ngrok-skip-browser-warning:true"
     ports:
       - "4040:4040"

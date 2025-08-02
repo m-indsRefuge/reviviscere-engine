@@ -11,7 +11,7 @@ on:
 jobs:
   e2e-test:
     name: Run End-to-End Tests
-    runs-on: ubuntu-latest # Reverted to the standard, free runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -19,8 +19,9 @@ jobs:
 
       - name: Start Docker Compose environment
         env:
-          # CRITICAL: Use the small 'tinyllama' model for CI testing
           OLLAMA_MODEL_NAME: tinyllama
+          # Pass the ngrok secret into the Docker environment
+          NGROK_AUTHTOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
         run: docker compose up -d --wait
 
       - name: Show Docker Compose logs on failure
