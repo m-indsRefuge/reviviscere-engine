@@ -9,17 +9,18 @@ on:
     branches: [ main ]
 
 jobs:
-  # The E2E test job is the primary gatekeeper
   e2e-test:
     name: Run End-to-End Tests
-    # Request a more powerful runner to handle the model download
-    runs-on: your-larger-runner-label # <-- IMPORTANT: Replace this placeholder
+    runs-on: ubuntu-latest # Reverted to the standard, free runner
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Start Docker Compose environment
+        env:
+          # CRITICAL: Use the small 'tinyllama' model for CI testing
+          OLLAMA_MODEL_NAME: tinyllama
         run: docker compose up -d --wait
 
       - name: Show Docker Compose logs on failure
@@ -50,7 +51,6 @@ jobs:
 
       - name: Run Vitest E2E tests against Preview
         env:
-          # This correctly passes the preview URL and API key to the test script
           BASE_URL: ${{ steps.deploy_preview.outputs.deployment-url }}
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
@@ -60,7 +60,6 @@ jobs:
         if: always()
         run: docker compose down
   
-  # The deploy job runs only after E2E tests pass on a push to main
   deploy-production:
     name: Deploy Watchtower to Production
     runs-on: ubuntu-latest

@@ -1,6 +1,4 @@
 # Dockerfile.ollama
-# Use the official Ollama image as a starting point
+# Use the official Ollama image as a starting point.
+# The model will be pulled by the docker-compose command at runtime.
 FROM ollama/ollama:latest
-
-# Download and bake the gemma:2b model into the image during the build
-RUN ollama pull gemma:2b

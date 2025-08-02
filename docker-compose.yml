@@ -2,13 +2,23 @@
 
 services:
   ollama:
-    # Build our custom image instead of pulling from Docker Hub
     build:
       context: .
       dockerfile: Dockerfile.ollama
     ports:
       - "11434:11434"
-    # The default command 'ollama serve' is now sufficient
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        ollama serve &
+        PID=$$!
+        # This will pull the model specified by the CI workflow
+        ollama pull $$OLLAMA_MODEL_NAME
+        wait $$PID
+    environment:
+      # This variable must be passed in from the CI workflow
+      - OLLAMA_MODEL_NAME
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:11434"]
       interval: 10s
