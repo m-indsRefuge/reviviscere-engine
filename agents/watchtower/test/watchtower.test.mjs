@@ -1,4 +1,3 @@
-import 'dotenv/config'; // ADD THIS LINE AT THE VERY TOP
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { moderatePrompt } from '../src/moderation.js';
 import { runSafetyChecks } from '../src/validator.js';
@@ -7,7 +6,7 @@ import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
 // --- Configuration for all tests ---
-const BASE_URL = process.env.BASE_URL;
+const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
 const API_KEY = process.env.API_KEY;
 
 // A mock environment for unit tests
