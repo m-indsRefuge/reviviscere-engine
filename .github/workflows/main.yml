@@ -40,9 +40,9 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
+        # CHANGED: Use npm ci for a clean, reproducible install from the new package-lock.json
         run: |
-          rm -f ./agents/watchtower/package-lock.json
-          npm --prefix ./agents/watchtower install
+          npm --prefix ./agents/watchtower ci
           npm install -g wrangler
 
       - name: Deploy to Cloudflare Preview and Capture Output
@@ -64,10 +64,8 @@ jobs:
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # Add chmod command to manually grant execute permission
-        run: |
-          chmod +x ./node_modules/.bin/vitest
-          npm run test:ci
+        # This will now use the correct version of Vitest installed by npm ci
+        run: npx vitest run --env-file .test.env
 
       - name: Teardown Docker Compose environment
         if: always()
