@@ -63,8 +63,10 @@ jobs:
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: true
-        # CHANGED: Execute the new npm script instead of npx directly
-        run: npm run test:ci
+        # CHANGED: Add chmod command to ensure the script is executable before running it
+        run: |
+          chmod +x ./node_modules/.bin/vitest
+          npm run test:ci
 
       - name: Teardown Docker Compose environment
         if: always()
