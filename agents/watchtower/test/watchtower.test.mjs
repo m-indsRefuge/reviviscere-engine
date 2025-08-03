@@ -1,3 +1,4 @@
+import 'dotenv/config'; // ADD THIS LINE: This loads the API_KEY from your .env file
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { moderatePrompt } from '../src/moderation.js';
 import { runSafetyChecks } from '../src/validator.js';
@@ -5,8 +6,9 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// --- Configuration for all tests ---
+// The BASE_URL is hardcoded, as you instructed.
 const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
+// The API_KEY will now be loaded from your .env file by the import above
 const API_KEY = process.env.API_KEY;
 
 // A mock environment for unit tests
@@ -89,10 +91,6 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
     });
     expect(res.ok, 'POST /ask request failed').toBe(true);
     const data = await res.json();
-    
-    // ADDED: This will print the full response from the server for debugging.
-    console.log('Received data from /ask endpoint:', data);
-
     expect(data.status).toBe('success');
     expect(data.verdict).toEqual(expect.stringMatching(/^(pass|fail|warn)$/));
   });
