@@ -5,7 +5,7 @@ import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// Using the hardcoded URL that is proven to work in the CI pipeline
+// --- Configuration for all tests ---
 const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
 const API_KEY = process.env.API_KEY;
 
@@ -33,8 +33,12 @@ describe('Unit Tests: Core Utility Functions', () => {
     expect(r.score).toBeGreaterThanOrEqual(8);
   });
   it('fetchWithRetry handles a 404 error correctly', async () => {
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response('Not Found', { status: 404 })
+    );
     const res = await fetchWithRetry('https://example.com/non-existent-page.txt', {}, 1, 2000, mockEnv, 'trace-123');
     expect(res.status).toBe(404);
+    mockFetch.mockRestore();
   });
   it('emitMetric calls the KV put method', async () => {
     await emitMetric('test_metric', { env: mockEnv });
@@ -85,9 +89,11 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
     });
     expect(res.ok, 'POST /ask request failed').toBe(true);
     const data = await res.json();
+    
+    // ADDED: This will print the full response from the server for debugging.
+    console.log('Received data from /ask endpoint:', data);
+
     expect(data.status).toBe('success');
-    // CHANGED: This now accepts that tinyllama may produce a 'fail' or 'warn' verdict,
-    // which is a valid logical outcome for the test.
     expect(data.verdict).toEqual(expect.stringMatching(/^(pass|fail|warn)$/));
   });
 
