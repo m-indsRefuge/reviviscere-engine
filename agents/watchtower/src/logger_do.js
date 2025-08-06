@@ -30,12 +30,25 @@ export class LoggerDO {
     }
 
     // --- Log Dump (GET /logs/dump) ---
-    // +++ CORRECTED: The check now uses the full path +++
     if (request.method === 'GET' && url.pathname === '/logs/dump') {
       try {
-        const { results } = await this.env.DB.prepare(
-          'SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100'
-        ).all();
+        // CORRECTED: Read the agent name from the query string
+        const agentName = url.searchParams.get('agent');
+        let query;
+        
+        if (agentName) {
+          // If an agent is specified, filter the logs
+          query = this.env.DB.prepare(
+            'SELECT * FROM logs WHERE agent = ?1 ORDER BY timestamp DESC LIMIT 100'
+          ).bind(agentName);
+        } else {
+          // If no agent is specified, return all recent logs (maintaining old behavior)
+          query = this.env.DB.prepare(
+            'SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100'
+          );
+        }
+
+        const { results } = await query.all();
 
         const formattedLogs = results.map(log =>
           `[${log.timestamp}] [${log.agent}] [${log.level}] ${log.traceId ? `[${log.traceId}] ` : ''}${log.message}`

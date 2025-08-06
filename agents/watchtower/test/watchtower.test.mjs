@@ -53,31 +53,32 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
 
-  // This test is now self-contained and more robust
-  itif(isCI)('should write a log via POST /logs and retrieve it via GET /logs/dump', async () => {
-    // Arrange: Create a unique identifier for this specific test run
+  itif(isCI)('should write a log and retrieve it for a specific agent', async () => {
+    // Arrange
     const uniqueTestId = `vitest-run-${crypto.randomUUID()}`;
+    const agentName = 'Watchtower-E2E-Test';
 
-    // Act 1: Write the log
+    // Act 1: Write a log with a unique agent name
     const postRes = await fetch(`${BASE_URL}/logs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        agent: 'Vitest Suite', 
+        agent: agentName, 
         level: 'INFO', 
-        message: 'Running automated E2E tests.', 
+        message: 'Running isolated E2E test.', 
         traceId: uniqueTestId 
       })
     });
     expect(postRes.ok, 'POST /logs request failed').toBe(true);
 
-    // Act 2: Wait for the log to be persisted, then retrieve the log dump
+    // Act 2: Retrieve logs specifically for that agent
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const getRes = await fetch(`${BASE_URL}/logs/dump`, { method: 'GET' });
+    const getRes = await fetch(`${BASE_URL}/logs/dump?agent=${agentName}`, { method: 'GET' });
     expect(getRes.ok, 'GET /logs/dump request failed').toBe(true);
     const text = await getRes.text();
 
-    // Assert: Check that the log dump contains our unique identifier
+    // Assert
     expect(text).toContain(uniqueTestId);
+    expect(text).not.toContain('[Cortex]'); // Verify no contamination
   });
 });
