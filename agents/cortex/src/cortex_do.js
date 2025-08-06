@@ -1,4 +1,3 @@
-//Test Input to Trigger CI/CD Pipeline
 import { logToD1 } from './logging.js';
 import { emitMetric } from '../metrics/metrics.js';
 

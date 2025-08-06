@@ -94,7 +94,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          npm --prefix ./agents/${{ matrix.agent }} ci
+          npm ci
           npm install -g wrangler
 
       - name: Deploy to Cloudflare Preview and Capture Output
