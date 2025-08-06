@@ -1,3 +1,4 @@
+// Triggering a full CI/CD pipeline run for validation.
 import { logToD1 } from './logging.js';
 import { emitMetric } from '../metrics/metrics.js';
 
