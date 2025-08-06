@@ -90,14 +90,10 @@ jobs:
           npm install -g wrangler
 
       - name: Deploy to Cloudflare Preview and Capture Output
-        run: wrangler deploy --config ./agents/${{ matrix.agent }}/wrangler.toml --var CORTEX_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} > deployment-output.txt
+        run: wrangler deploy --config ./agents/${{ matrix.agent }}/wrangler.toml --var CORTEX_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} 2>&1 | tee deployment-output.txt
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      - name: DEBUG - Show Deployment Output
-        if: always()
-        run: cat deployment-output.txt
-
+          
       - name: Create Test Environment File
         id: create_env
         run: |
