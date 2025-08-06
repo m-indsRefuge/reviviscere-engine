@@ -115,4 +115,5 @@ export default {
 };
 
 // Expose your DO classes for Wrangler bindings
-export { WatchtowerDO, ConfigDO, LoggerDO };
+export { WatchtowerDO, ConfigDO, LoggerDO };// Re-validating CI pipeline
+
