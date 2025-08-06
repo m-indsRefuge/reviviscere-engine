@@ -1,0 +1,20 @@
+# Node.js dependencies
+/node_modules
+
+# Cloudflare Wrangler build artifacts and local dev storage
+.wrangler/
+dist/
+
+# Environment files - contains secrets and should NEVER be committed
+.env
+.dev.vars
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS-specific files
+.DS_Store
+Thumbs.db

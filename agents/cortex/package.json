@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "dotenv": "^17.2.1",
-    "vitest": "^1.5.0",
-    "wrangler": "^3.0.0"
+    "vitest": "^3.2.4",
+    "wrangler": "^4.28.0"
   }
 }

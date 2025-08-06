@@ -5,7 +5,7 @@ compatibility_date = "2025-06-30"
 [vars]
 API_KEY = "8a1b9c2d3e4f5a6b7c8d9e0f1a2b3c4d"
 CORTEX_MODEL_NAME = "llama3.2"
-CORTEX_MODEL_URL = "https://568f6d23cedb.ngrok-free.app"
+CORTEX_MODEL_URL = "https://f2c0757fd568.ngrok-free.app"
 MIW_INGEST_URL = "https://metrics-ingestion-worker.nolanaug.workers.dev"
 
 [[d1_databases]]

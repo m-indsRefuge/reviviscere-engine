@@ -13,7 +13,7 @@
   "devDependencies": {
     "dotenv": "^17.2.0",
     "node-fetch": "^3.3.2",
-    "vitest": "^1.5.0",
-    "wrangler": "^4.27.0"
+    "vitest": "^3.2.4",
+    "wrangler": "4.28.0"
   }
 }
