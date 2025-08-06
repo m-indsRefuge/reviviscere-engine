@@ -32,11 +32,6 @@ jobs:
           cortex_changed=false
           watchtower_changed=false
           changed_agents="[]"
-
-          echo "--- Files Changed This Push ---"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}"
-          echo "-------------------------------"
-
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [[ "$file" == agents/cortex/* ]]; then
               cortex_changed=true
@@ -45,7 +40,6 @@ jobs:
               watchtower_changed=true
             fi
           done
-
           if [[ "$cortex_changed" == true && "$watchtower_changed" == true ]]; then
             changed_agents='["cortex", "watchtower"]'
           elif [[ "$cortex_changed" == true ]]; then
@@ -53,8 +47,6 @@ jobs:
           elif [[ "$watchtower_changed" == true ]]; then
             changed_agents='["watchtower"]'
           fi
-
-          echo "Determined agents to test: $changed_agents"
           echo "agents=$changed_agents" >> $GITHUB_OUTPUT
 
   e2e-test:
@@ -102,9 +94,19 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+      - name: DEBUG - Show Deployment Output
+        if: always()
+        run: cat deployment-output.txt
+
       - name: Create Test Environment File
+        id: create_env
         run: |
           URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
+          if [ -z "$URL" ]; then
+            echo "::error::Failed to extract preview URL from deployment output."
+            exit 1
+          fi
+          echo "Extracted Preview URL: $URL"
           echo "BASE_URL=$URL" > ./agents/${{ matrix.agent }}/.test.env
 
       - name: Run Vitest E2E tests against Preview
@@ -137,7 +139,6 @@ jobs:
   deploy-production-cortex:
     name: Deploy Cortex to Production
     runs-on: ubuntu-latest
-    # CORRECTED: Removed the typo from 'e-e2e-test'
     needs: [changes, e2e-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(fromJson(needs.changes.outputs.agents), 'cortex')
 
