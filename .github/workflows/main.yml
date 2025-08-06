@@ -10,26 +10,53 @@ permissions:
   contents: read
   pull-requests: read
 
-# In your main.yml file
-
 jobs:
   changes:
     name: Detect Changed Agents
     runs-on: ubuntu-latest
     outputs:
-      # MODIFIED THIS LINE: Added a fallback to ensure valid JSON
-      agents: ${{ steps.filter.outputs.agents || '[]' }}
+      agents: ${{ steps.determine-agents.outputs.agents || '[]' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v2
-        id: filter
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
         with:
-          filters: |
-            watchtower:
-              - 'agents/watchtower/**'
-            cortex:
-              - 'agents/cortex/**'
-              
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+
+      - name: Determine changed agents from file list
+        id: determine-agents
+        run: |
+          cortex_changed=false
+          watchtower_changed=false
+          changed_agents="[]"
+
+          echo "--- Files Changed This Push ---"
+          echo "${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "-------------------------------"
+
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [[ "$file" == agents/cortex/* ]]; then
+              cortex_changed=true
+            fi
+            if [[ "$file" == agents/watchtower/* ]]; then
+              watchtower_changed=true
+            fi
+          done
+
+          if [[ "$cortex_changed" == true && "$watchtower_changed" == true ]]; then
+            changed_agents='["cortex", "watchtower"]'
+          elif [[ "$cortex_changed" == true ]]; then
+            changed_agents='["cortex"]'
+          elif [[ "$watchtower_changed" == true ]]; then
+            changed_agents='["watchtower"]'
+          fi
+
+          echo "Determined agents to test: $changed_agents"
+          echo "agents=$changed_agents" >> $GITHUB_OUTPUT
+
   e2e-test:
     name: Run E2E Tests for ${{ matrix.agent }}
     needs: changes
@@ -94,9 +121,8 @@ jobs:
   deploy-production-watchtower:
     name: Deploy Watchtower to Production
     runs-on: ubuntu-latest
-    needs: e2e-test
-    # CORRECTED: Added a check for the 'watchtower' agent
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(needs.changes.outputs.agents, 'watchtower')
+    needs: [changes, e2e-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(fromJson(needs.changes.outputs.agents), 'watchtower')
 
     steps:
       - name: Checkout code
@@ -111,9 +137,8 @@ jobs:
   deploy-production-cortex:
     name: Deploy Cortex to Production
     runs-on: ubuntu-latest
-    needs: e2e-test
-    # CORRECTED: Added a check for the 'cortex' agent
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(needs.changes.outputs.agents, 'cortex')
+    needs: [changes, e2e-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(fromJson(needs.changes.outputs.agents), 'cortex')
 
     steps:
       - name: Checkout code
