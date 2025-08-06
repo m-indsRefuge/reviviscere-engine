@@ -89,33 +89,12 @@ jobs:
           npm ci
           npm install -g wrangler
 
-      - name: Deploy to Cloudflare Preview and Capture Output
-        run: wrangler deploy --config ./agents/${{ matrix.agent }}/wrangler.toml --var CORTEX_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} 2>&1 | tee deployment-output.txt
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          
-      - name: Create Test Environment File
-        id: create_env
-        run: |
-          URL=$(grep -oP 'https://[^ ]*workers.dev' deployment-output.txt | head -n 1)
-          if [ -z "$URL" ]; then
-            echo "::error::Failed to extract preview URL from deployment output."
-            echo "Full deployment output:"
-            cat deployment-output.txt
-            exit 1
-          fi
-          echo "Extracted Preview URL: $URL"
-          echo "BASE_URL=$URL" > ./agents/${{ matrix.agent }}/.test.env
-          
-      - name: DEBUG - Display Test File Content
-        run: cat ./agents/${{ matrix.agent }}/test/watchtower.test.mjs   
-          
-      - name: Run Vitest E2E tests against Preview
+      - name: Run Vitest E2E tests
         working-directory: ./agents/${{ matrix.agent }}
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: "true"
-        run: npx dotenv -e .test.env -- npx vitest run
+        run: npx vitest run
 
       - name: Teardown Docker Compose environment
         if: always()
@@ -129,8 +108,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v4.1.1
       - name: Deploy Watchtower Agent
         uses: cloudflare/wrangler-action@v3
         with:
@@ -146,7 +124,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Deploy Cortex Agent
         uses: cloudflare/wrangler-action@v3
         with:

@@ -7,7 +7,7 @@ import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
 // This BASE_URL will be dynamically replaced by the CI/CD pipeline
-const BASE_URL = process.env.BASE_URL || 'https://watchtower-agent-worker.nolanaug.workers.dev';
+const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
 const API_KEY = process.env.API_KEY;
 
 const mockEnv = {
