@@ -1,0 +1,18 @@
+name = "cortex-metrics-aggregator"
+main = "index.js"
+compatibility_date = "2025-06-30"
+
+# This tells Cloudflare to run this worker on a schedule
+[triggers]
+crons = ["0 * * * *"] # This will run at the top of every hour
+
+# --- KV Namespace Bindings ---
+# This worker needs to READ from the raw metrics...
+[[kv_namespaces]]
+binding = "CORTEX_METRICS"
+id = "cfcb37a8d99e4f06b056830b499de387" # <-- IMPORTANT: Replace with your KV ID
+
+# ...and WRITE to the aggregates KV.
+[[kv_namespaces]]
+binding = "CORTEX_AGGREGATES"
+id = "7525c9ff79c947d79674cab139a89911" # <-- IMPORTANT: Replace with your KV ID

@@ -8,19 +8,30 @@ $model = "gemma:2b"
 $configEndpoint = "https://watchtower-agent-worker.nolanaug.workers.dev/config"
 $apiKey = "4f7e2d3a9b5f4c78a1d6e9f023b5c412"
 
-# === KILL ANY RUNNING PROCESSES ===
-# ... (This section remains the same) ...
-Write-Host "Killing any running Ollama, ngrok, and Watchtower model processes..."
-Get-Process -Name "ollama" -ErrorAction SilentlyContinue | ForEach-Object {
-    Write-Host "Killing Ollama process ID $($_.Id)"
+# === KILL ANY RUNNING PROCESSES AND STOP SERVICE ===
+Write-Host "Stopping Ollama service and killing any running processes..."
+$serviceName = "Ollama"
+$processNames = @("ollama", "ngrok")
+
+# Gracefully stop the Ollama service first
+if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
+    try {
+        Write-Host "Found and stopping the Ollama service..."
+        Stop-Service -Name $serviceName -Force -ErrorAction Stop
+        Write-Host "Ollama service stopped."
+    } catch {
+        Write-Host "WARNING: Failed to stop the Ollama service. It might already be stopped or require admin rights."
+    }
+}
+
+# Kill any remaining processes by name
+Get-Process -Name $processNames -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Host "Killing lingering process: $($_.Name) (ID: $($_.Id))"
     $_ | Stop-Process -Force
 }
-Get-Process -Name "ngrok" -ErrorAction SilentlyContinue | ForEach-Object {
-    Write-Host "Killing ngrok process ID $($_.Id)"
-    $_ | Stop-Process -Force
-}
+
+# Final check for processes holding the port
 Start-Sleep -Seconds 2
-Write-Host "Checking for processes using port $port..."
 $connections = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
 if ($connections) {
     $pids = $connections | Select-Object -ExpandProperty OwningProcess -Unique
@@ -33,9 +44,8 @@ if ($connections) {
         }
     }
 } else {
-    Write-Host "No process found using port $port."
+    Write-Host "Confirmed that port $port is free."
 }
-
 
 # === START OLLAMA SERVER (NEW METHOD) ===
 if (-not (Get-Process -Name "ollama" -ErrorAction SilentlyContinue)) {

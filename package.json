@@ -1,7 +1,11 @@
 {
   "name": "reviviscere-n3rv-engine",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "workspaces": [
+    "agents/*"
+  ],
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

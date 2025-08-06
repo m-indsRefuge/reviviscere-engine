@@ -1,7 +1,7 @@
 {
-  "name": "watchtower-agent",
+  "name": "cortex-agent",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "wrangler dev",
@@ -11,9 +11,8 @@
     "itty-router": "^4.2.2"
   },
   "devDependencies": {
-    "dotenv": "^17.2.0",
-    "node-fetch": "^3.3.2",
+    "dotenv": "^17.2.1",
     "vitest": "^3.2.4",
-    "wrangler": "4.28.0"
+    "wrangler": "^4.28.0"
   }
 }
