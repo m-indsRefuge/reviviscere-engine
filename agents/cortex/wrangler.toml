@@ -3,22 +3,38 @@ main = "src/index.js"
 compatibility_date = "2025-06-30"
 
 [vars]
-CORTEX_MODEL_NAME = "phi"
-CORTEX_MODEL_URL = "https://471d61171696.ngrok-free.app"
+API_KEY = "8a1b9c2d3e4f5a6b7c8d9e0f1a2b3c4d"
+CORTEX_MODEL_NAME = "llama3.2"
+CORTEX_MODEL_URL = "https://568f6d23cedb.ngrok-free.app"
+MIW_INGEST_URL = "https://metrics-ingestion-worker.nolanaug.workers.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "reviviscere-logs"
+database_id = "69398ef1-e9cf-4b49-8ac1-a8f942653363"
+
+[[kv_namespaces]]
+binding = "CORTEX_LOGS"
+id = "4eb2c4bcaf6e49b692e80234cf571183"
+
+[[kv_namespaces]]
+binding = "CORTEX_METRICS"
+id = "cfcb37a8d99e4f06b056830b499de387"
+
+[[kv_namespaces]]
+binding = "CORTEX_CONFIG_KV"
+id = "ba9364ba652b49b789b2ac75c7c8ccbd"
 
 [durable_objects]
 bindings = [
-  { name = "CORTEX_DO_V3", class_name = "CortexDO" },
+  { name = "CORTEX_DO", class_name = "CortexDO" },
   { name = "CONFIG_DO", class_name = "ConfigDO" }
 ]
 
+# Migrations for both Durable Object classes
 [[migrations]]
-tag = "v3"
-new_sqlite_classes = ["CortexDO"]
-
-[[migrations]]
-tag = "v4"
-new_sqlite_classes = ["ConfigDO"]
+tag = "v1"
+new_sqlite_classes = ["CortexDO", "ConfigDO"]
 
 [observability.logs]
 enabled = true
