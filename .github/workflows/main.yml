@@ -97,14 +97,19 @@ jobs:
       - name: Create Test Environment File
         id: create_env
         run: |
-          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
+          URL=$(sed -n 's/.*\(https://[^ ]*workers.dev\).*/\1/p' deployment-output.txt)
           if [ -z "$URL" ]; then
             echo "::error::Failed to extract preview URL from deployment output."
+            echo "Full deployment output:"
+            cat deployment-output.txt
             exit 1
           fi
           echo "Extracted Preview URL: $URL"
           echo "BASE_URL=$URL" > ./agents/${{ matrix.agent }}/.test.env
-
+          
+      - name: DEBUG - Display Test File Content
+        run: cat ./agents/${{ matrix.agent }}/test/watchtower.test.mjs   
+          
       - name: Run Vitest E2E tests against Preview
         working-directory: ./agents/${{ matrix.agent }}
         env:
