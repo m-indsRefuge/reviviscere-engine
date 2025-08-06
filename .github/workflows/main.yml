@@ -97,7 +97,7 @@ jobs:
       - name: Create Test Environment File
         id: create_env
         run: |
-          URL=$(sed -n 's/.*\(https://[^ ]*workers.dev\).*/\1/p' deployment-output.txt)
+          URL=$(grep -oP 'https://[^ ]*workers.dev' deployment-output.txt | head -n 1)
           if [ -z "$URL" ]; then
             echo "::error::Failed to extract preview URL from deployment output."
             echo "Full deployment output:"
