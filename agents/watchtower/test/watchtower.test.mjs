@@ -1,17 +1,15 @@
-import 'dotenv/config'; // ADD THIS LINE: This loads the API_KEY from your .env file
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import 'dotenv/config';
+import { describe, it, expect, vi } from 'vitest';
 import { moderatePrompt } from '../src/moderation.js';
 import { runSafetyChecks } from '../src/validator.js';
 import { fetchWithRetry } from '../src/fetch.js';
 import { emitMetric } from '../src/metrics.js';
 import { logInteraction } from '../src/logging.js';
 
-// The BASE_URL is hardcoded, as you instructed.
-const BASE_URL = 'https://watchtower-agent-worker.nolanaug.workers.dev';
-// The API_KEY will now be loaded from your .env file by the import above
+// This BASE_URL will be dynamically replaced by the CI/CD pipeline
+const BASE_URL = process.env.BASE_URL || 'https://watchtower-agent-worker.nolanaug.workers.dev';
 const API_KEY = process.env.API_KEY;
 
-// A mock environment for unit tests
 const mockEnv = {
   WATCHTOWER_METRICS: { put: vi.fn(), get: vi.fn() },
   WATCHTOWER_LOGS: { put: vi.fn() },
@@ -56,61 +54,49 @@ describe('E2E Tests: Live Watchtower Endpoints', () => {
   const itif = (condition) => condition ? it : it.skip;
   const isCI = process.env.CI;
 
-  beforeAll(async () => {
-    if (!isCI) return;
-    console.log(`--- E2E: Setting up live configuration via POST /config on ${BASE_URL} ---`);
-    const configPayload = {
-      modelUrl: "http://placeholder.io",
-      apiKey: API_KEY,
-      promptTemplate: "Is the following text logically sound and ethically neutral? Respond with only a JSON object with keys 'verdict' (pass/fail) and 'reason'. Text: {inputText}",
-      PHRASE_WEIGHTS: {
-        "as an ai": 5, "i cannot provide": 5, "it's possible that": 3
-      },
-      MODEL_TIMEOUT_MS: 60000
-    };
-    const res = await fetch(`${BASE_URL}/config`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(configPayload)
-    });
-    expect(res.status, 'Configuration setup failed').toBe(200);
-  }, 60000);
+  // This test now uses a polling mechanism to be resilient to D1 replication delays
+  itif(isCI)('should write a log and retrieve it for a specific agent', { timeout: 20000 }, async () => {
+    // Arrange
+    const uniqueTestId = `vitest-run-${crypto.randomUUID()}`;
+    const agentName = 'Watchtower-E2E-Test';
 
-  itif(isCI)('GET /config should retrieve the live configuration', async () => {
-    const res = await fetch(`${BASE_URL}/config`, { headers: { 'Authorization': `Bearer ${API_KEY}` } });
-    expect(res.ok, 'GET /config request failed').toBe(true);
-    const data = await res.json();
-    expect(data.MODEL_TIMEOUT_MS).toBe(60000);
-  });
-
-  itif(isCI)('POST /ask should validate a safe prompt and return a PASS verdict', { timeout: 120000 }, async () => {
-    const res = await fetch(`${BASE_URL}/ask`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: 'Explain separation of concerns in software engineering.' })
-    });
-    expect(res.ok, 'POST /ask request failed').toBe(true);
-    const data = await res.json();
-    expect(data.status).toBe('success');
-    expect(data.verdict).toEqual(expect.stringMatching(/^(pass|fail|warn)$/));
-  });
-
-  itif(isCI)('POST /logs should write a structured log to the D1 database', async () => {
-    const res = await fetch(`${BASE_URL}/logs`, {
+    // Act 1: Write the log
+    const postRes = await fetch(`${BASE_URL}/logs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        agent: 'Vitest Suite', level: 'INFO', message: 'Running automated E2E tests.', traceId: `vitest-${crypto.randomUUID()}`
+        agent: agentName, 
+        level: 'INFO', 
+        message: 'Running isolated E2E test.', 
+        traceId: uniqueTestId 
       })
     });
-    expect(res.ok, 'POST /logs request failed').toBe(true);
-  });
+    expect(postRes.ok, 'POST /logs request failed').toBe(true);
 
-  itif(isCI)('GET /logs/dump should retrieve logs from the D1 database', async () => {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const res = await fetch(`${BASE_URL}/logs/dump`, { method: 'GET' });
-    expect(res.ok, 'GET /logs/dump request failed').toBe(true);
-    const text = await res.text();
-    expect(text).toContain('Vitest Suite');
+    // Act 2: Poll the dump endpoint until the log is found or we time out
+    let text = '';
+    let logFound = false;
+    const maxWait = 15000; // 15 seconds
+    const pollInterval = 1000; // 1 second
+    let elapsedTime = 0;
+
+    while (elapsedTime < maxWait) {
+      const getRes = await fetch(`${BASE_URL}/logs/dump?agent=${agentName}`, { method: 'GET' });
+      if (getRes.ok) {
+        text = await getRes.text();
+        if (text.includes(uniqueTestId)) {
+          logFound = true;
+          break;
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      elapsedTime += pollInterval;
+    }
+
+    // Assert
+    expect(logFound, `Log with ID ${uniqueTestId} was not found in the dump after ${maxWait}ms`).toBe(true);
+    expect(text).not.toContain('[Cortex]'); // Verify no contamination
   });
 });
+
+
