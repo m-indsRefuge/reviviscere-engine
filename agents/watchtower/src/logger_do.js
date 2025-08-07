@@ -5,6 +5,9 @@ export class LoggerDO {
   }
 
   async fetch(request) {
+    // --> ADD THIS LINE <--
+    console.log(`LoggerDO received request: ${request.method} ${request.url}`);
+
     const url = new URL(request.url);
 
     // --- Log Ingestion (POST /logs) ---
@@ -21,6 +24,9 @@ export class LoggerDO {
           'INSERT INTO logs (id, timestamp, agent, level, message, traceId) VALUES (?, ?, ?, ?, ?, ?)'
         );
         await stmt.bind(crypto.randomUUID(), timestamp, agent, level, message, traceId || null).run();
+        
+        // --> ADD THIS LINE <--
+        console.log(`LoggerDO successfully INSERTED log for agent: ${agent}`);
 
         return new Response('Logged', { status: 200 });
       } catch (e) {
@@ -29,24 +35,25 @@ export class LoggerDO {
       }
     }
 
-// --- Log Dump (GET /logs/dump) ---
+    // --- Log Dump (GET /logs/dump) ---
     if (request.method === 'GET' && url.pathname === '/logs/dump') {
       try {
-        // 1. Get the agent name from the URL query parameters
         const agent = url.searchParams.get('agent');
+        
+        // --> ADD THIS LINE <--
+        console.log(`LoggerDO received DUMP request for agent: ${agent}`);
 
-        // 2. Return an error if the agent parameter is missing
         if (!agent) {
           return new Response(JSON.stringify({ error: 'Missing required query parameter: agent' }), { status: 400 });
         }
-
-        // 3. Prepare a statement that filters by the agent name
+        
         const stmt = this.env.DB.prepare(
           'SELECT * FROM logs WHERE agent = ? ORDER BY timestamp DESC LIMIT 100'
         );
-        
-        // 4. Bind the agent name to the query and get the results
         const { results } = await stmt.bind(agent).all();
+
+        // --> ADD THIS LINE <--
+        console.log(`LoggerDO FOUND ${results.length} logs for agent: ${agent}`);
 
         const formattedLogs = results.map(log =>
           `[${log.timestamp}] [${log.agent}] [${log.level}] ${log.traceId ? `[${log.traceId}] ` : ''}${log.message}`
@@ -61,3 +68,7 @@ export class LoggerDO {
         return new Response('Failed to retrieve logs from D1', { status: 500 });
       }
     }
+
+    return new Response('Not found', { status: 404 });
+  }
+}
