@@ -29,13 +29,24 @@ export class LoggerDO {
       }
     }
 
-    // --- Log Dump (GET /logs/dump) ---
-    // +++ CORRECTED: The check now uses the full path +++
+// --- Log Dump (GET /logs/dump) ---
     if (request.method === 'GET' && url.pathname === '/logs/dump') {
       try {
-        const { results } = await this.env.DB.prepare(
-          'SELECT * FROM logs ORDER BY timestamp DESC LIMIT 100'
-        ).all();
+        // 1. Get the agent name from the URL query parameters
+        const agent = url.searchParams.get('agent');
+
+        // 2. Return an error if the agent parameter is missing
+        if (!agent) {
+          return new Response(JSON.stringify({ error: 'Missing required query parameter: agent' }), { status: 400 });
+        }
+
+        // 3. Prepare a statement that filters by the agent name
+        const stmt = this.env.DB.prepare(
+          'SELECT * FROM logs WHERE agent = ? ORDER BY timestamp DESC LIMIT 100'
+        );
+        
+        // 4. Bind the agent name to the query and get the results
+        const { results } = await stmt.bind(agent).all();
 
         const formattedLogs = results.map(log =>
           `[${log.timestamp}] [${log.agent}] [${log.level}] ${log.traceId ? `[${log.traceId}] ` : ''}${log.message}`
@@ -50,7 +61,3 @@ export class LoggerDO {
         return new Response('Failed to retrieve logs from D1', { status: 500 });
       }
     }
-
-    return new Response('Not found', { status: 404 });
-  }
-}
