@@ -5,7 +5,6 @@ export class LoggerDO {
   }
 
   async fetch(request) {
-    // --> ADD THIS LINE <--
     console.log(`LoggerDO received request: ${request.method} ${request.url}`);
 
     const url = new URL(request.url);
@@ -13,21 +12,23 @@ export class LoggerDO {
     // --- Log Ingestion (POST /logs) ---
     if (request.method === 'POST' && url.pathname === '/logs') {
       try {
-        const { agent, level, message, traceId } = await request.json();
+        // CHANGED: Added 'metadata' to the destructured properties
+        const { agent, level, message, traceId, metadata } = await request.json();
         const timestamp = new Date().toISOString();
 
         if (!agent || !level || !message) {
           return new Response(JSON.stringify({ error: 'Missing required log fields: agent, level, message' }), { status: 400 });
         }
 
+        // CHANGED: Added 'metadata' column to the INSERT statement
         const stmt = this.env.DB.prepare(
-          'INSERT INTO logs (id, timestamp, agent, level, message, traceId) VALUES (?, ?, ?, ?, ?, ?)'
+          'INSERT INTO logs (id, timestamp, agent, level, message, trace_id, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
-        await stmt.bind(crypto.randomUUID(), timestamp, agent, level, message, traceId || null).run();
         
-        // --> ADD THIS LINE <--
+        // CHANGED: Added 'metadata' to the bind call
+        await stmt.bind(crypto.randomUUID(), timestamp, agent, level, message, traceId || null, metadata || null).run();
+        
         console.log(`LoggerDO successfully INSERTED log for agent: ${agent}`);
-
         return new Response('Logged', { status: 200 });
       } catch (e) {
         console.error('D1 Logging Error:', e);
@@ -40,7 +41,6 @@ export class LoggerDO {
       try {
         const agent = url.searchParams.get('agent');
         
-        // --> ADD THIS LINE <--
         console.log(`LoggerDO received DUMP request for agent: ${agent}`);
 
         if (!agent) {
@@ -52,11 +52,11 @@ export class LoggerDO {
         );
         const { results } = await stmt.bind(agent).all();
 
-        // --> ADD THIS LINE <--
         console.log(`LoggerDO FOUND ${results.length} logs for agent: ${agent}`);
 
+        // CHANGED: Added optional 'metadata' to the formatted output string
         const formattedLogs = results.map(log =>
-          `[${log.timestamp}] [${log.agent}] [${log.level}] ${log.traceId ? `[${log.traceId}] ` : ''}${log.message}`
+          `[${log.timestamp}] [${log.agent}] [${log.level}] ${log.trace_id ? `[${log.trace_id}] ` : ''}${log.message}${log.metadata ? ` [METADATA: ${log.metadata}]` : ''}`
         ).join('\n');
 
         return new Response(formattedLogs, {
