@@ -1,4 +1,4 @@
-//Test input to Trigger Pipeline -- 5
+//Final Validation CI/CD
 import { logToD1 } from './logging.js';
 import { emitMetric } from '../metrics/metrics.js';
 
