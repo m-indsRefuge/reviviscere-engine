@@ -70,7 +70,7 @@ export class WatchtowerDO {
   async #log(tag, msg, traceId) {
     const loggerStub = this.env.LOGGER_DO.get(this.env.LOGGER_DO.idFromName('main'));
     try {
-      await loggerStub.fetch('https://logger/log', {
+      await loggerStub.fetch('https://watchtower-agent-worker.nolanaug.workers.dev/logs', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({

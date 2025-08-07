@@ -32,11 +32,6 @@ jobs:
           cortex_changed=false
           watchtower_changed=false
           changed_agents="[]"
-
-          echo "--- Files Changed This Push ---"
-          echo "${{ steps.changed-files.outputs.all_changed_files }}"
-          echo "-------------------------------"
-
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             if [[ "$file" == agents/cortex/* ]]; then
               cortex_changed=true
@@ -45,7 +40,6 @@ jobs:
               watchtower_changed=true
             fi
           done
-
           if [[ "$cortex_changed" == true && "$watchtower_changed" == true ]]; then
             changed_agents='["cortex", "watchtower"]'
           elif [[ "$cortex_changed" == true ]]; then
@@ -53,8 +47,6 @@ jobs:
           elif [[ "$watchtower_changed" == true ]]; then
             changed_agents='["watchtower"]'
           fi
-
-          echo "Determined agents to test: $changed_agents"
           echo "agents=$changed_agents" >> $GITHUB_OUTPUT
 
   e2e-test:
@@ -97,22 +89,12 @@ jobs:
           npm ci
           npm install -g wrangler
 
-      - name: Deploy to Cloudflare Preview and Capture Output
-        run: wrangler deploy --config ./agents/${{ matrix.agent }}/wrangler.toml --var CORTEX_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} --var WATCHTOWER_MODEL_URL:${{ steps.get_url.outputs.NGROK_URL }} > deployment-output.txt
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-
-      - name: Create Test Environment File
-        run: |
-          URL=$(grep -o 'https://[^ ]*workers.dev' deployment-output.txt | tr -d '\r')
-          echo "BASE_URL=$URL" > ./agents/${{ matrix.agent }}/.test.env
-
-      - name: Run Vitest E2E tests against Preview
+      - name: Run Vitest E2E tests
         working-directory: ./agents/${{ matrix.agent }}
         env:
           API_KEY: ${{ secrets.API_KEY }}
           CI: "true"
-        run: npx dotenv -e .test.env -- npx vitest run
+        run: npx vitest run
 
       - name: Teardown Docker Compose environment
         if: always()
@@ -126,8 +108,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v4.1.1
       - name: Deploy Watchtower Agent
         uses: cloudflare/wrangler-action@v3
         with:
@@ -137,14 +118,12 @@ jobs:
   deploy-production-cortex:
     name: Deploy Cortex to Production
     runs-on: ubuntu-latest
-    # CORRECTED: Removed the typo from 'e-e2e-test'
     needs: [changes, e2e-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && contains(fromJson(needs.changes.outputs.agents), 'cortex')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Deploy Cortex Agent
         uses: cloudflare/wrangler-action@v3
         with:
